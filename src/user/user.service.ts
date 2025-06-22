@@ -12,24 +12,24 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
-    constructor(   @InjectRepository(User) private readonly userRepository: Repository<User>,
+  constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly authProvider: AuthProvider
-) {
-        // Constructor logic can be added here if needed
-    }
+  ) {
+    // Constructor logic can be added here if needed
+  }
 
-      public async register(registerDto: RegisterDto) {
-          return this.authProvider.register(registerDto);
+  public async register(registerDto: RegisterDto) {
+    return this.authProvider.register(registerDto);
 
-    }
+  }
 
-    public async login(loginDto: LoginDto) {
-          return this.authProvider.login(loginDto);
+  public async login(loginDto: LoginDto) {
+    return this.authProvider.login(loginDto);
 
-    }
+  }
 
 
-      public async update(id: number, updateUserDto: UpdateUserDto) {
+  public async update(id: number, updateUserDto: UpdateUserDto) {
     const { password, username } = updateUserDto;
     const user = await this.userRepository.findOne({ where: { id } });
 
@@ -40,7 +40,7 @@ export class UserService {
 
     return this.userRepository.save(user);
   }
-     public async getCurrentUser(id: number): Promise<User> {
+  public async getCurrentUser(id: number): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException("user not found");
     return user;

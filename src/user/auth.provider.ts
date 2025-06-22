@@ -37,9 +37,13 @@ export class AuthProvider {
            newSUser = await this.userRepository.save(newSUser);
            const token = await this.generateJWTToken({id: newSUser.id, email: newSUser.email });
            return {
-               user: newSUser,
-               token,
-           };
+  success: true,
+  message: 'User logged in successfully',
+  data: {
+    user:newSUser,
+    token,
+  },
+};
        }
 
    
@@ -61,9 +65,13 @@ export class AuthProvider {
                    const token = await this.generateJWTToken({id: user.id, email: user.email });
    
            return {
-            user,
-               token,
-           };
+  success: true,
+  message: 'User logged in successfully',
+  data: {
+    user,
+    token,
+  },
+};
        }
 
   
