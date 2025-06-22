@@ -7,59 +7,43 @@ import * as bcrypt from 'bcryptjs';
 import { LoginDto } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { JWTPayloadType } from 'src/utils/types';
+import { AuthProvider } from './auth.provider';
+import { UpdateUserDto } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
     constructor(   @InjectRepository(User) private readonly userRepository: Repository<User>,
-private readonly jwtService: JwtService) {
+    private readonly authProvider: AuthProvider
+) {
         // Constructor logic can be added here if needed
     }
 
       public async register(registerDto: RegisterDto) {
-        const { email, password, username } = registerDto;
-        const existingUser = await this.userRepository.findOne({ where: { email } });
-        if (existingUser) {
-            throw new Error('User with this email already exists');
-        }
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-        let newSUser = this.userRepository.create({
-            email,
-            password: hashedPassword,
-            userName: username,
-        });
-        newSUser = await this.userRepository.save(newSUser);
-        const token = await this.generateJWTToken({id: newSUser.id, email: newSUser.email });
-        return {
-            user: newSUser,
-            token,
-        };
+          return this.authProvider.register(registerDto);
+
     }
 
     public async login(loginDto: LoginDto) {
-        const { email, password } = loginDto;
-        const user = await this.userRepository.findOne({ where: { email } });
-        if (!user) {
-            throw new BadRequestException('Invalid email or password');
-        }
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            throw new BadRequestException('Invalid email or password');
-        }
-                const token = await this.generateJWTToken({id: user.id, email: user.email });
+          return this.authProvider.login(loginDto);
 
-        return {
-            token,
-        };
     }
 
+
+      public async update(id: number, updateUserDto: UpdateUserDto) {
+    const { password, username } = updateUserDto;
+    const user = await this.userRepository.findOne({ where: { id } });
+
+    user.username = username ?? user.username;
+    if (password) {
+      user.password = await this.authProvider.hashPassword(password);
+    }
+
+    return this.userRepository.save(user);
+  }
      public async getCurrentUser(id: number): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException("user not found");
     return user;
   }
 
-    private async generateJWTToken(payload: JWTPayloadType): Promise<string> {
-       return this.jwtService.signAsync(payload);
-    }
 }
