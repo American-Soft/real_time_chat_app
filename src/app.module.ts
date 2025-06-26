@@ -4,8 +4,10 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './user/user.module';
+import { MailModule } from './mail/mail.module';
 @Module({
-  imports: [UserModule,TypeOrmModule.forRootAsync({
+  imports: [UserModule,
+    MailModule,TypeOrmModule.forRootAsync({
     inject: [ConfigService],
     useFactory: async (configService: ConfigService) => ({
       type: 'mysql',
@@ -17,6 +19,7 @@ import { UserModule } from './user/user.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
+  
   }),
   ConfigModule.forRoot({
     isGlobal: true,

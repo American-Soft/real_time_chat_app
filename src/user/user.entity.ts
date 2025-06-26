@@ -10,6 +10,10 @@ username: string;
 email: string;
 @Column()
 password: string;
+@Column({ nullable: true })
+verificationToken: string;
+@Column({ nullable: true })
+resetPasswordToken: string;
 @Column({ default: false,nullable: true })
 isAcountVerified: boolean;
 @Column({ nullable: true })

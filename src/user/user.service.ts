@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { JWTPayloadType } from 'src/utils/types';
 import { AuthProvider } from './auth.provider';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { ResetPasswordDto } from './dtos/reset-password.dto';
 
 @Injectable()
 export class UserService {
@@ -46,4 +47,34 @@ export class UserService {
     return user;
   }
 
+    public async verifyEmail(userId: number, verificationToken: string) {
+    const user = await this.getCurrentUser(userId);
+
+    if(user.verificationToken === null)
+      throw new NotFoundException("there is no verification token");
+
+    if(user.verificationToken !== verificationToken)
+      throw new BadRequestException("invalid link");
+
+    user.isAcountVerified = true;
+    user.verificationToken = null;
+
+    await this.userRepository.save(user);
+    return { success:true, message: "Your email has been verified, please log in to your account" };
+  }
+
+
+  public sendResetPassword(email: string) {
+    return this.authProvider.sendResetPasswordLink(email);
+  }
+
+
+  public getResetPassword(userId:number, resetPasswordToken: string) {
+    return this.authProvider.getResetPasswordLink(userId, resetPasswordToken);
+  }
+
+
+  public resetPassword(dto: ResetPasswordDto) {
+    return this.authProvider.resetPassword(dto);
+  }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Headers, UseGuards, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Headers, UseGuards, Put, Param, ParseIntPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
@@ -13,6 +13,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ResetPasswordDto } from './dtos/reset-password.dto';
+import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 @Controller('user')
 export class UserController {
   constructor(private readonly usersService: UserService) {
@@ -27,15 +29,8 @@ export class UserController {
     schema: {
       example: {
         success: true,
-        message: 'User logged in successfully',
-        data: {
-          user: {
-            id: 1,
-            username: 'maged',
-            email: 'maged@example.com',
-          },
-          token: 'jwt_token_here'
-        }
+        message: 'Verification token has been sent to your email, please verify your email address',
+
       }
     }
   })
@@ -130,6 +125,33 @@ export class UserController {
   })
   public updateUser(@CurrentUser() payload: JWTPayloadType, @Body() body: UpdateUserDto) {
     return this.usersService.update(payload.id, body);
+  }
+
+  @Get("verify-email/:id/:verificationToken")
+  public verifyEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('verificationToken') verificationToken: string
+  ) {
+    return this.usersService.verifyEmail(id, verificationToken);
+  }
+
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  public forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.usersService.sendResetPassword(body.email);
+  }
+
+  @Get("reset-password/:id/:resetPasswordToken")
+  public getResetPassword(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("resetPasswordToken") resetPasswordToken: string
+  ) {
+    return this.usersService.getResetPassword(id, resetPasswordToken);
+  }
+
+  @Post("reset-password")
+  public resetPassword(@Body() body: ResetPasswordDto) {
+    return this.usersService.resetPassword(body);
   }
 
 }
