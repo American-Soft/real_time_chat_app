@@ -22,6 +22,13 @@ export class AuthProvider {
         private readonly mailService: MailService,
     ) { }
 
+
+    /**
+    * Create new user
+    * @param registerDto data for creating new user
+    * @returns a success message
+    */
+
     public async register(registerDto: RegisterDto) {
         try {
             const { email, password, username } = registerDto;
@@ -50,6 +57,11 @@ export class AuthProvider {
         }
     }
 
+    /**
+ * Log In user
+ * @param loginDto data for log in to user account
+ * @returns JWT (access token)
+ */
     public async login(loginDto: LoginDto) {
         try {
             const { email, password } = loginDto;
@@ -104,31 +116,40 @@ export class AuthProvider {
         }
     }
 
-     public async resetPassword(dto: ResetPasswordDto) {
-    try {
-      const { userId, resetPasswordToken, newPassword } = dto;
-      const user = await this.userRepository.findOne({ where: { id: userId } });
+    public async resetPassword(dto: ResetPasswordDto) {
+        try {
+            const { userId, resetPasswordToken, newPassword } = dto;
+            const user = await this.userRepository.findOne({ where: { id: userId } });
 
-      if (!user || user.resetPasswordToken !== resetPasswordToken)
-        throw new BadRequestException('Invalid reset password link');
+            if (!user || user.resetPasswordToken !== resetPasswordToken)
+                throw new BadRequestException('Invalid reset password link');
 
-      const hashedPassword = await this.hashPassword(newPassword);
-      user.password = hashedPassword;
-      user.resetPasswordToken = null;
+            const hashedPassword = await this.hashPassword(newPassword);
+            user.password = hashedPassword;
+            user.resetPasswordToken = null;
 
-      await this.userRepository.save(user);
-      return { message: 'Password reset successfully, please log in' };
-    } catch (err) {
-      throw new BadRequestException(err.message || 'Password reset failed');
+            await this.userRepository.save(user);
+            return { message: 'Password reset successfully, please log in' };
+        } catch (err) {
+            throw new BadRequestException(err.message || 'Password reset failed');
+        }
     }
-  }
 
 
+    /**
+   * Hashing password
+   * @param password plain text password
+   * @returns hashed password
+   */
     public async hashPassword(password: string): Promise<string> {
         const salt = await bcrypt.genSalt(10);
         return bcrypt.hash(password, salt);
     }
-
+    /**
+       * Generate Json Web Token
+       * @param payload JWT payload
+       * @returns token
+       */
     private generateJWTToken(payload: JWTPayloadType): Promise<string> {
         return this.jwtService.signAsync(payload);
     }

@@ -2,9 +2,14 @@ import { MailerService } from "@nestjs-modules/mailer";
 import { Injectable, RequestTimeoutException } from "@nestjs/common";
 
 @Injectable()
-export class MailService { 
+export class MailService {
     constructor(private readonly mailerService: MailerService) { }
 
+    /**
+   * Sending verify email template
+   * @param email email of the registered user
+   * @param link link with id of the user and verification token
+   */
 
     public async sendVerifyEmailTemplate(email: string, link: string) {
         try {
@@ -41,5 +46,5 @@ export class MailService {
         }
     }
 
-    
+
 }

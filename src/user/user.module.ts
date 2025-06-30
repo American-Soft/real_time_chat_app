@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { BadRequestException, Module } from '@nestjs/common';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,6 +7,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from './auth.provider';
 import { MailModule } from 'src/mail/mail.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 
 @Module({
     imports: [TypeOrmModule.forFeature([User]),MailModule,JwtModule.registerAsync({
@@ -16,7 +18,27 @@ import { MailModule } from 'src/mail/mail.module';
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') }, // Token expiration time
       }),
-    })], 
+    }),
+   MulterModule.register({
+            storage: diskStorage({
+                destination: './profile-images',
+                filename: (req, file, cb) => {
+                    const prefix = `${Date.now()}-${Math.round(Math.random() * 1000000)}`;
+                    const filename = `${prefix}-${file.originalname}`;
+                    console.log(filename);
+                    cb(null, filename);
+                }
+            }),
+            fileFilter: (req, file, cb) => {
+              console.log(file);
+                if (file.mimetype.startsWith("image")) {
+                    cb(null, true);
+                } else {
+                    cb(new BadRequestException("Unsupported file format"), false);
+                }
+            },
+            limits: { fileSize: 1024 * 1024 }
+        })], 
 
   controllers: [UserController],
   providers: [UserService,AuthProvider],

@@ -16,8 +16,8 @@ verificationToken: string;
 resetPasswordToken: string;
 @Column({ default: false,nullable: true })
 isAcountVerified: boolean;
-@Column({ nullable: true })
-userAvartar: string;
+@Column({ nullable: true,default:null })
+profileImage: string;
 @Column({type:'timestamp', default: () => 'CURRENT_TIMESTAMP'})
 createdAt: Date;
 @Column({type:'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP'})
