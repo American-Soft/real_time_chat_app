@@ -2,7 +2,7 @@ import { IsNotEmpty, IsOptional, IsString, Length, MinLength } from "class-valid
 import { ApiPropertyOptional } from "@nestjs/swagger";
 
 export class UpdateUserDto {
-      @ApiPropertyOptional({
+    @ApiPropertyOptional({
     example: 'newSecurePass123',
     description: 'New password (min 6 characters)',
     minLength: 6,
