@@ -37,21 +37,21 @@ export class AuthProvider {
                 throw new BadRequestException('User with this email already exists');
             }
             const hashedPassword = await this.hashPassword(password);
-            let newUser = this.userRepository.create({
+            let user = this.userRepository.create({
                 email,
                 password: hashedPassword,
                 username: username,
                 verificationToken: randomBytes(32).toString('hex'),
             });
-            newUser = await this.userRepository.save(newUser);
-            const verifyLink = this.generateLink(newUser.id, newUser.verificationToken);
+            user = await this.userRepository.save(user);
+            const verifyLink = this.generateLink(user.id, user.verificationToken);
             await this.mailService.sendVerifyEmailTemplate(email, verifyLink);
-            const token = await this.generateJWTToken({ id: newUser.id, email: newUser.email });
+            const token = await this.generateJWTToken({ id: user.id, email: user.email });
             return {
                 success: true,
                 message: 'Verification token has been sent to your email, please verify your email address',
                  data: {
-                    newUser,
+                    user,
                     token,
                 },
 
