@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Friendship } from "src/friendship/friendship.entity";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity({ name: 'users' })
 export class User {
@@ -23,4 +24,9 @@ createdAt: Date;
 @Column({type:'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP'})
 updatedAt: Date;
 
+@OneToMany(() => Friendship, friendship => friendship.requester)
+sentRequests: Friendship[];
+
+@OneToMany(() => Friendship, friendship => friendship.receiver)
+receivedRequests: Friendship[];
 }
