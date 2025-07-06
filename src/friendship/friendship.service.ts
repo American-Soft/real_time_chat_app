@@ -1,0 +1,61 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Friendship } from './friendship.entity';
+import { FriendshipStatus } from '../enums/friendship-status.enum';
+import { User } from '../user/user.entity';
+import { SendFriendRequestDto } from './dtos/send-friend-request.dto';
+import { AcceptDeclineRequestDto } from './dtos/accept-decline-request.dto';
+import { SearchUsersDto } from './dtos/search-users.dto';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+
+@Injectable()
+export class  FriendshipService {
+  constructor(
+    @InjectRepository(Friendship)
+    private readonly friendshipRepository: Repository<Friendship>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
+
+
+  async sendFriendRequest(requesterId: number, dto: SendFriendRequestDto) {
+    if (requesterId === dto.receiverId) {
+      throw new BadRequestException('You cannot send a friend request to yourself.');
+    }
+    const requester = await this.userRepository.findOne({ where: { id: requesterId } });
+    const receiver = await this.userRepository.findOne({ where: { id: dto.receiverId } });
+    if (!requester || !receiver) {
+      throw new NotFoundException('User not found.');
+    }
+    // Check if a friendship already exists
+    const existing = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: requesterId }, receiver: { id: dto.receiverId } },
+        { requester: { id: dto.receiverId }, receiver: { id: requesterId } },
+      ],
+    });
+    if (existing) {
+      throw new BadRequestException('Friend request already exists or you are already friends.');
+    }
+    const friendship = this.friendshipRepository.create({
+      requester,
+      receiver,
+      status: FriendshipStatus.PENDING,
+    });
+    return this.friendshipRepository.save(friendship);
+  }
+
+  async acceptFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
+    const friendship = await this.friendshipRepository.findOne({
+      where: { id: dto.requestId, receiver: { id: userId }, status: FriendshipStatus.PENDING },
+      relations: ['requester', 'receiver'],
+    });
+    if (!friendship) {
+      throw new NotFoundException('Friend request not found.');
+    }
+    friendship.status = FriendshipStatus.ACCEPTED;
+    return this.friendshipRepository.save(friendship);
+  }
+
+} 
