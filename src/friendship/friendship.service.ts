@@ -58,4 +58,26 @@ export class  FriendshipService {
     return this.friendshipRepository.save(friendship);
   }
 
+    async declineFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
+    const friendship = await this.friendshipRepository.findOne({
+      where: { id: dto.requestId, receiver: { id: userId }, status: FriendshipStatus.PENDING },
+      relations: ['requester', 'receiver'],
+    });
+    if (!friendship) {
+      throw new NotFoundException('Friend request not found.');
+    }
+    friendship.status = FriendshipStatus.DECLINED;
+    return this.friendshipRepository.save(friendship);
+  }
+
+   async searchUsers(userId: number, dto: SearchUsersDto) {
+    const qb = this.userRepository.createQueryBuilder('user');
+    qb.where('user.id != :userId', { userId });
+    if (dto.query) {
+      qb.andWhere('user.username LIKE :query OR user.email LIKE :query', {query: `%${dto.query}%` });
+    }
+
+    return qb.getMany();
+  }
+
 } 

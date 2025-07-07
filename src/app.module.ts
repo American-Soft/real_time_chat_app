@@ -5,9 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { MailModule } from './mail/mail.module';
+import { FriendshipModule } from './friendship/friendship.module';
 @Module({
   imports: [UserModule,
-    MailModule,TypeOrmModule.forRootAsync({
+    MailModule,
+    FriendshipModule,
+    TypeOrmModule.forRootAsync({
     inject: [ConfigService],
     useFactory: async (configService: ConfigService) => ({
       type: 'mysql',

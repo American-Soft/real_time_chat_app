@@ -11,6 +11,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { SearchUsersDto } from './dtos/search-users.dto';
 
 @ApiTags('Friendship')
 @ApiBearerAuth()
@@ -68,5 +69,56 @@ export class FriendshipController {
     return this.friendshipService.acceptFriendRequest(user.id, dto);
   }
 
+
+
+  
+  @ApiOperation({ summary: 'Decline a friend request' })
+  @ApiBody({ type: AcceptDeclineRequestDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Friend request declined successfully',
+    schema: {
+      example: {
+        id: 5,
+        requester: { id: 1, username: 'john' },
+        receiver: { id: 2, username: 'jane' },
+        status: 'DECLINED',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Friend request not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+ @Post('decline')
+  async declineRequest(
+    @CurrentUser() user: any,
+    @Body() dto: AcceptDeclineRequestDto
+  ) {
+    return this.friendshipService.declineFriendRequest(user.id, dto);
+  }
+
+
+
+
+  @ApiOperation({ summary: 'Search for users' })
+  @ApiBody({ type: SearchUsersDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Users found successfully',
+    schema: {
+      example: [
+        { id: 1, username: 'john', email: 'a0vH0@example.com' },
+        { id: 2, username: 'jane', email: 'lRZGZ@example.com' },
+      ],
+    },
+  })
+  @ApiResponse({ status: 404, description: 'No users found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+   @Post('search')
+  async searchUsers(
+    @CurrentUser() user: any,
+    @Body() dto: SearchUsersDto
+  ) {
+    return this.friendshipService.searchUsers(user.id, dto);
+  }
 
 } 
