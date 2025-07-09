@@ -80,4 +80,24 @@ export class  FriendshipService {
     return qb.getMany();
   }
 
+    async listFriends(userId: number) {
+    const friendships = await this.friendshipRepository.find({
+      where: [
+        { requester: { id: userId }, status: FriendshipStatus.ACCEPTED },
+        { receiver: { id: userId }, status: FriendshipStatus.ACCEPTED },
+      ],
+      relations: ['requester', 'receiver'],
+    });
+    return friendships.map(f =>
+      f.requester.id === userId ? f.receiver : f.requester
+    );
+  }
+
+  async listPendingRequests(userId: number) {
+    return this.friendshipRepository.find({
+      where: { receiver: { id: userId }, status: FriendshipStatus.PENDING },
+      relations: ['requester'],
+    });
+  }
+
 } 

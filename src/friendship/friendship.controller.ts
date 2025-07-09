@@ -121,4 +121,40 @@ export class FriendshipController {
     return this.friendshipService.searchUsers(user.id, dto);
   }
 
+
+   @ApiOperation({ summary: 'List friends' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of friends retrieved successfully',
+    schema: {
+      example: [
+        { id: 1, username: 'john', email: 'a0vH0@example.com' },
+        { id: 2, username: 'jane', email: 'lRZGZ@example.com' },
+      ],
+    },
+  })
+  @ApiResponse({ status: 404, description: 'No friends found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Get('friends')
+  async listFriends(@CurrentUser() user: any) {
+    return this.friendshipService.listFriends(user.id);
+  }
+
+     @ApiOperation({ summary: 'List pending friend requests' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of pending friend requests retrieved successfully',
+    schema: {
+      example: [
+        { id: 1, requester: { id: 2, username: 'jane' }, status: 'PENDING' },
+        { id: 2, requester: { id: 3, username: 'doe' }, status: 'PENDING' },
+      ],
+    },
+  })
+  @ApiResponse({ status: 404, description: 'No pending requests found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Get('requests')
+  async listRequests(@CurrentUser() user: any) {
+    return this.friendshipService.listPendingRequests(user.id);
+  }
 } 
