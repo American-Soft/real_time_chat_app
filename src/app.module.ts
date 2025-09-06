@@ -7,11 +7,13 @@ import { UserModule } from './user/user.module';
 import { MailModule } from './mail/mail.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { ChatModule } from './chat/chat.module';
+import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [UserModule,
     MailModule,
     FriendshipModule,
     ChatModule,
+    AuthModule,
     TypeOrmModule.forRootAsync({
     inject: [ConfigService],
     useFactory: async (configService: ConfigService) => ({
