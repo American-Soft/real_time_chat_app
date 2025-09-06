@@ -50,7 +50,7 @@ export class AuthProvider {
             return {
                 success: true,
                 message: 'Verification token has been sent to your email, please verify your email address',
-                 data: {
+                data: {
                     user,
                     token,
                 },

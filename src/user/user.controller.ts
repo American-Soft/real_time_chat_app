@@ -13,12 +13,15 @@ import {
   ApiOperation,
   ApiResponse,
   ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ResetPasswordDto } from './dtos/reset-password.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageUploadDto } from './dtos/image-upload.dto';
 import { Response } from 'express';
+@ApiTags('user')
+@ApiBearerAuth()
 @Controller('user')
 export class UserController {
   constructor(private readonly usersService: UserService) {
@@ -159,33 +162,32 @@ export class UserController {
   }
 
 
-      @Post('upload-profile-image')
-      @UseGuards(AuthGuard)
-      @UseInterceptors(FileInterceptor('profile-image'))
-      @ApiSecurity('bearer')
-      @ApiConsumes("multipart/form-data")
-      @ApiBody({ type: ImageUploadDto, description: 'profile image' })
-      public uploadProfileImage(
-          @UploadedFile() file: Express.Multer.File,
-          @CurrentUser() payload: JWTPayloadType) {
-            console.log(file);
-          if (!file) throw new BadRequestException("no image provided");
-          return this.usersService.setProfileImage(payload.id, file.filename);
-      }
+  @Post('upload-profile-image')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('profile-image'))
+  @ApiSecurity('bearer')
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({ type: ImageUploadDto, description: 'profile image' })
+  public uploadProfileImage(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() payload: JWTPayloadType) {
+    if (!file) throw new BadRequestException("no image provided");
+    return this.usersService.setProfileImage(payload.id, file.filename);
+  }
 
-    @Delete("images/remove-profile-image")
-    @UseGuards(AuthGuard)
-    @ApiSecurity('bearer')
-    public removeProfileImage(@CurrentUser() payload: JWTPayloadType) {
-        return this.usersService.removeProfileImage(payload.id);
-    }
+  @Delete("images/remove-profile-image")
+  @UseGuards(AuthGuard)
+  @ApiSecurity('bearer')
+  public removeProfileImage(@CurrentUser() payload: JWTPayloadType) {
+    return this.usersService.removeProfileImage(payload.id);
+  }
 
-    @Get("images/:profile_image")
-    @UseGuards(AuthGuard)
-    @ApiSecurity('bearer')
-    public showProfileImage(@Param('profile_image') profile_image: string, @Res() res: Response) {
-        return res.sendFile(profile_image, { root: 'profile-images' })
-    }
+  @Get("images/:profile_image")
+  @UseGuards(AuthGuard)
+  @ApiSecurity('bearer')
+  public showProfileImage(@Param('profile_image') profile_image: string, @Res() res: Response) {
+    return res.sendFile(profile_image, { root: 'profile-images' })
+  }
 
 
 }

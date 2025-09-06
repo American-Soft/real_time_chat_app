@@ -21,7 +21,6 @@ export class MailService {
                 context: { link }
             })
         } catch (error) {
-            console.log(error);
             throw new RequestTimeoutException();
         }
     }
@@ -41,7 +40,6 @@ export class MailService {
                 context: { resetPasswordLink }
             })
         } catch (error) {
-            console.log(error);
             throw new RequestTimeoutException();
         }
     }
