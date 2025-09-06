@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ChatService } from './chat.service';
-import { FileUploadService } from './file-upload.service';
+import { FileUploadService } from '../upload/file-upload.service';
 import { SendMessageDto } from './dtos/send-message.dto';
 import { GetMessagesDto } from './dtos/get-messages.dto';
 import { AuthGuard } from '../user/guards/auth.guard';
