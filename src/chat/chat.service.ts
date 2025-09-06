@@ -53,7 +53,7 @@ export class ChatService {
     return !!friendship;
   }
 
-  async creatGroupt(
+  async createGroup(
     userID: number,
     createGropuDto: CreateGroupDto,
   ): Promise<Group> {
