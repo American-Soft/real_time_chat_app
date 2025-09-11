@@ -21,6 +21,9 @@ import { User } from '../user/user.entity';
 
 import { MessageType } from 'src/enums/message-type.enum';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CreateGroupDto } from './dtos/create-group.dto';
+import { AddGroupMemberDto } from './dtos/add-group-member.dto';
+import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
 @ApiTags('chat')
 @ApiBearerAuth()
 @Controller('chat')
@@ -32,6 +35,123 @@ export class ChatController {
   ) { }
 
 
+  @Post('group')
+  @ApiOperation({ summary: 'Create a new group chat' })
+  @ApiBody({ type: CreateGroupDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Group chat created successfully',
+    schema: {
+      example: {
+        id: 1,
+        name: 'Study Group',
+        creator: { id: 1, username: 'john' },
+        admins: [{ id: 1, username: 'john' }],
+        members: [{ id: 1, username: 'john' }, { id: 2, username: 'jane' }],
+        createdAt: '2025-07-19T12:00:00.000Z',
+        updatedAt: '2025-07-19T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - invalid data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+
+  async createGroup(
+    @CurrentUser() user: User,
+    @Body() createGroupDto: CreateGroupDto,
+  ) {
+    return this.chatService.createGroup(user.id, createGroupDto);
+  }
+
+  @Post('group/add-member')
+  @ApiOperation({ summary: 'Add a member to a group chat' })
+  @ApiBody({ type: AddGroupMemberDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Member added to group successfully',
+    schema: {
+      example: {
+        id: 1,
+        name: 'Study Group',
+        members: [
+          { id: 1, username: 'john' },
+          { id: 2, username: 'jane' },
+          { id: 3, username: 'doe' },
+        ],
+        admins: [{ id: 1, username: 'john' }],
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - invalid data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Only admins can add members' })
+
+  async addGroupMember(
+    @CurrentUser() user: User,
+    @Body() addGroupMemberDto: AddGroupMemberDto
+  ) {
+    return this.chatService.addMemberToGroup(user.id, addGroupMemberDto);
+  }
+
+  @Post('group/add-admin')
+  @ApiOperation({ summary: 'Add an admin to a group chat' })
+  @ApiBody({ type: AddGroupAdminDto })
+  @ApiResponse({
+    status: 200,
+    description: 'List of groups the user is part of',
+    schema: {
+      example: [
+        {
+          id: 1,
+          name: 'Study Group',
+          creator: { id: 1, username: 'john' },
+          members: [
+            { id: 1, username: 'john' },
+            { id: 2, username: 'jane' },
+          ],
+          admins: [{ id: 1, username: 'john' }],
+          createdAt: '2025-07-19T12:00:00.000Z',
+          updatedAt: '2025-07-19T12:00:00.000Z',
+        },
+      ],
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - invalid data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Only admins can add other admins' })
+
+  @Post('group/add-admin')
+  async addGroupAdmin(@CurrentUser() user: User, @Body() addGroupAdminDto: AddGroupAdminDto) {
+    return this.chatService.addGroupAdmin(user.id, addGroupAdminDto);
+  }
+
+  @Get('groups')
+  @ApiOperation({ summary: 'Get user groups' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of groups the user is part of',
+    schema: {
+      example: [
+        {
+          id: 1,
+          name: 'Study Group',
+          creator: { id: 1, username: 'john' },
+          members: [
+            { id: 1, username: 'john' },
+            { id: 2, username: 'jane' },
+          ],
+          admins: [{ id: 1, username: 'john' }],
+          createdAt: '2025-07-19T12:00:00.000Z',
+          updatedAt: '2025-07-19T12:00:00.000Z',
+        },
+      ],
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - invalid data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUserGroups(@CurrentUser() user: User) {
+    return this.chatService.getUserGroups(user.id);
+  }
 
   @Post('send-message')
   @UseInterceptors(FileInterceptor('file'))
