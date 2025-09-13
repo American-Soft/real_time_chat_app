@@ -7,7 +7,7 @@ import { ChatRoom } from './chat-room.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
 import { Friendship } from '../friendship/friendship.entity';
- 
+ import { ChatGateway } from './chat.gateway';
 import { Group } from './group.entity';
 
 
@@ -17,7 +17,7 @@ import { Group } from './group.entity';
     
   ],
   controllers: [ChatController],
-  providers: [ChatService,  FileUploadService],
+  providers: [ChatService,  FileUploadService,ChatGateway],
   exports: [ChatService],
 })
 export class ChatModule { } 
