@@ -198,7 +198,7 @@ async mutualFriends(
   @CurrentUser() user: any,
   @Body() dto: MutualFriendsDto,
 ) {
-  return this.friendshipService.getMutualFriends(user.id, dto.otherUserId);
+  return this.friendshipService.getMutualFriends(user.id, dto.otherUserIds);
 }
 
 } 
