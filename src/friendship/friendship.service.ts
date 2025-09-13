@@ -10,13 +10,13 @@ import { SearchUsersDto } from './dtos/search-users.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 @Injectable()
-export class  FriendshipService {
+export class FriendshipService {
   constructor(
     @InjectRepository(Friendship)
     private readonly friendshipRepository: Repository<Friendship>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
 
   async sendFriendRequest(requesterId: number, dto: SendFriendRequestDto) {
@@ -46,6 +46,26 @@ export class  FriendshipService {
     return this.friendshipRepository.save(friendship);
   }
 
+  async cancelFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
+    const friendship = await this.friendshipRepository.findOne({
+      where: {
+        id: dto.requestId,
+        requester: { id: userId },
+        status: FriendshipStatus.PENDING,
+      },
+      relations: ['requester', 'receiver'],
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('Pending friend request not found or not yours to cancel.');
+    }
+
+    await this.friendshipRepository.remove(friendship);
+
+    return { message: 'Friend request cancelled successfully.' };
+  }
+
+
   async acceptFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
     const friendship = await this.friendshipRepository.findOne({
       where: { id: dto.requestId, receiver: { id: userId }, status: FriendshipStatus.PENDING },
@@ -58,7 +78,7 @@ export class  FriendshipService {
     return this.friendshipRepository.save(friendship);
   }
 
-    async declineFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
+  async declineFriendRequest(userId: number, dto: AcceptDeclineRequestDto) {
     const friendship = await this.friendshipRepository.findOne({
       where: { id: dto.requestId, receiver: { id: userId }, status: FriendshipStatus.PENDING },
       relations: ['requester', 'receiver'],
@@ -70,17 +90,17 @@ export class  FriendshipService {
     return this.friendshipRepository.save(friendship);
   }
 
-   async searchUsers(userId: number, dto: SearchUsersDto) {
+  async searchUsers(userId: number, dto: SearchUsersDto) {
     const qb = this.userRepository.createQueryBuilder('user');
     qb.where('user.id != :userId', { userId });
     if (dto.query) {
-      qb.andWhere('user.username LIKE :query OR user.email LIKE :query', {query: `%${dto.query}%` });
+      qb.andWhere('user.username LIKE :query OR user.email LIKE :query', { query: `%${dto.query}%` });
     }
 
     return qb.getMany();
   }
 
-    async listFriends(userId: number) {
+  async listFriends(userId: number) {
     const friendships = await this.friendshipRepository.find({
       where: [
         { requester: { id: userId }, status: FriendshipStatus.ACCEPTED },

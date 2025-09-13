@@ -18,10 +18,10 @@ import { SearchUsersDto } from './dtos/search-users.dto';
 @Controller('friendship')
 @UseGuards(AuthGuard)
 export class FriendshipController {
-  constructor(private readonly friendshipService: FriendshipService) {}
+  constructor(private readonly friendshipService: FriendshipService) { }
 
   @Post('request')
-    @ApiOperation({ summary: 'Send a friend request' })
+  @ApiOperation({ summary: 'Send a friend request' })
   @ApiBody({ type: SendFriendRequestDto })
   @ApiResponse({
     status: 201,
@@ -42,6 +42,26 @@ export class FriendshipController {
     @Body() dto: SendFriendRequestDto
   ) {
     return this.friendshipService.sendFriendRequest(user.id, dto);
+  }
+
+
+  @ApiOperation({ summary: 'Cancel a sent friend request' })
+  @ApiBody({ type: AcceptDeclineRequestDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Friend request cancelled successfully',
+    schema: {
+      example: { message: 'Friend request cancelled successfully.' },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Friend request not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('cancel')
+  async cancelRequest(
+    @CurrentUser() user: any,
+    @Body() dto: AcceptDeclineRequestDto,
+  ) {
+    return this.friendshipService.cancelFriendRequest(user.id, dto);
   }
 
   @ApiOperation({ summary: 'Accept a friend request' })
@@ -71,7 +91,7 @@ export class FriendshipController {
 
 
 
-  
+
   @ApiOperation({ summary: 'Decline a friend request' })
   @ApiBody({ type: AcceptDeclineRequestDto })
   @ApiResponse({
@@ -88,7 +108,7 @@ export class FriendshipController {
   })
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
- @Post('decline')
+  @Post('decline')
   async declineRequest(
     @CurrentUser() user: any,
     @Body() dto: AcceptDeclineRequestDto
@@ -113,7 +133,7 @@ export class FriendshipController {
   })
   @ApiResponse({ status: 404, description: 'No users found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-   @Post('search')
+  @Post('search')
   async searchUsers(
     @CurrentUser() user: any,
     @Body() dto: SearchUsersDto
@@ -122,7 +142,7 @@ export class FriendshipController {
   }
 
 
-   @ApiOperation({ summary: 'List friends' })
+  @ApiOperation({ summary: 'List friends' })
   @ApiResponse({
     status: 200,
     description: 'List of friends retrieved successfully',
@@ -140,7 +160,7 @@ export class FriendshipController {
     return this.friendshipService.listFriends(user.id);
   }
 
-     @ApiOperation({ summary: 'List pending friend requests' })
+  @ApiOperation({ summary: 'List pending friend requests' })
   @ApiResponse({
     status: 200,
     description: 'List of pending friend requests retrieved successfully',
