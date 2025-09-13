@@ -12,6 +12,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SearchUsersDto } from './dtos/search-users.dto';
+import { MutualFriendsDto } from './dtos/mutual-friends.dto';
 
 @ApiTags('Friendship')
 @ApiBearerAuth()
@@ -177,4 +178,27 @@ export class FriendshipController {
   async listRequests(@CurrentUser() user: any) {
     return this.friendshipService.listPendingRequests(user.id);
   }
+
+  @ApiOperation({ summary: 'Get mutual friends with another user' })
+@ApiBody({ type: MutualFriendsDto })
+@ApiResponse({
+  status: 200,
+  description: 'Mutual friends retrieved successfully',
+  schema: {
+    example: [
+      { id: 3, username: 'sarah', email: 'sarah@example.com' },
+      { id: 5, username: 'mark', email: 'mark@example.com' },
+    ],
+  },
+})
+@ApiResponse({ status: 404, description: 'No mutual friends found' })
+@ApiResponse({ status: 401, description: 'Unauthorized' })
+@Post('mutual')
+async mutualFriends(
+  @CurrentUser() user: any,
+  @Body() dto: MutualFriendsDto,
+) {
+  return this.friendshipService.getMutualFriends(user.id, dto.otherUserId);
+}
+
 } 
