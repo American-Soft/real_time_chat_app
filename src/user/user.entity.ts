@@ -5,6 +5,10 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 export class User {
 @PrimaryGeneratedColumn()
 id: number;
+@Column({ type: 'varchar', length: 100, nullable: true })
+firstName: string;
+@Column({ type: 'varchar', length: 100, nullable: true })
+lastName: string;
 @Column({type: 'varchar', length: 150, nullable: true})
 username: string;
 @Column({type: 'varchar', length: 250, unique: true})

@@ -50,7 +50,7 @@ export class UserService {
  * @returns updated user from the database
  */
   public async update(id: number, updateUserDto: UpdateUserDto) {
-    const { password, username } = updateUserDto;
+    const { password, username ,firstName,lastName} = updateUserDto;
     const user = await this.userRepository.findOne({ where: { id } });
 
     user.username = username ?? user.username;

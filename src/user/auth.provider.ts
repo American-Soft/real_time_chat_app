@@ -31,7 +31,7 @@ export class AuthProvider {
 
     public async register(registerDto: RegisterDto) {
         try {
-            const { email, password, username } = registerDto;
+            const { email, password, username,firstName,lastName } = registerDto;
             const existingUser = await this.userRepository.findOne({ where: { email } });
             if (existingUser) {
                 throw new BadRequestException('User with this email already exists');
