@@ -91,14 +91,33 @@ export class FriendshipService {
   }
 
   async searchUsers(userId: number, dto: SearchUsersDto) {
+    const { query, page = 1, limit = 10 } = dto;
+
     const qb = this.userRepository.createQueryBuilder('user');
+
     qb.where('user.id != :userId', { userId });
-    if (dto.query) {
-      qb.andWhere('user.username LIKE :query OR user.email LIKE :query', { query: `%${dto.query}%` });
+
+    if (query) {
+      qb.andWhere('(user.username LIKE :query OR user.email LIKE :query)', {
+        query: `%${query}%`,
+      });
     }
 
-    return qb.getMany();
+    // Pagination
+    qb.skip((page - 1) * limit); // OFFSET
+    qb.take(limit);              // LIMIT
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
+
 
   async listFriends(userId: number) {
     const friendships = await this.friendshipRepository.find({
@@ -123,9 +142,9 @@ export class FriendshipService {
   async getMutualFriends(userId: number, otherUserId: number) {
     const qb = this.userRepository.createQueryBuilder('user');
 
-    qb.innerJoin('user.sentRequests','f1','(f1.receiver = :userId OR f1.requester = :userId) AND f1.status = :status',{userId,status:FriendshipStatus.ACCEPTED});
-    qb.innerJoin('user.sentRequests','f2','(f2.receiver = :otherUserId OR f2.requester = :otherUserId) AND f2.status = :status',{otherUserId,status:FriendshipStatus.ACCEPTED});
-    qb.where('user.id != :userId AND user.id != :otherUserId',{userId,otherUserId});
+    qb.innerJoin('user.sentRequests', 'f1', '(f1.receiver = :userId OR f1.requester = :userId) AND f1.status = :status', { userId, status: FriendshipStatus.ACCEPTED });
+    qb.innerJoin('user.sentRequests', 'f2', '(f2.receiver = :otherUserId OR f2.requester = :otherUserId) AND f2.status = :status', { otherUserId, status: FriendshipStatus.ACCEPTED });
+    qb.where('user.id != :userId AND user.id != :otherUserId', { userId, otherUserId });
     return qb.getMany();
   }
 } 
