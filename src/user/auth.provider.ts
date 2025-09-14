@@ -41,6 +41,8 @@ export class AuthProvider {
                 email,
                 password: hashedPassword,
                 username: username,
+                firstName:firstName,
+                lastName:lastName,
                 verificationToken: randomBytes(32).toString('hex'),
             });
             user = await this.userRepository.save(user);
