@@ -144,31 +144,34 @@ async getMutualFriends(userId: number, otherUserIds: number[]) {
     return [];
   }
 
-  const qb = this.userRepository.createQueryBuilder('user');
+  const results = [];
 
-  // Join friendships with current user
-  qb.innerJoin(
-    'user.sentRequests',
-    'f1',
-    '(f1.receiver = :userId OR f1.requester = :userId) AND f1.status = :status',
-    { userId, status: FriendshipStatus.ACCEPTED },
-  );
+  for (const otherUserId of otherUserIds) {
+    const qb = this.userRepository.createQueryBuilder('user')
+      .innerJoin(
+        'user.sentRequests',
+        'f1',
+        '(f1.receiver = :userId OR f1.requester = :userId) AND f1.status = :status',
+        { userId, status: FriendshipStatus.ACCEPTED },
+      )
+      .innerJoin(
+        'user.sentRequests',
+        'f2',
+        '(f2.receiver = :otherUserId OR f2.requester = :otherUserId) AND f2.status = :status',
+        { otherUserId, status: FriendshipStatus.ACCEPTED },
+      )
+      .where('user.id NOT IN (:...excluded)', { excluded: [userId, otherUserId] });
 
-  // Join friendships with each of the other user IDs
-  otherUserIds.forEach((otherUserId, index) => {
-    qb.innerJoin(
-      'user.sentRequests',
-      `f${index + 2}`,
-      `(f${index + 2}.receiver = :otherUserId${index} OR f${index + 2}.requester = :otherUserId${index}) AND f${index + 2}.status = :status`,
-      { [`otherUserId${index}`]: otherUserId, status: FriendshipStatus.ACCEPTED },
-    );
-  });
+    const mutualFriends = await qb.getMany();
 
-  // Exclude self + all "otherUserIds"
-  qb.where('user.id != :userId', { userId });
-  qb.andWhere('user.id NOT IN (:...otherUserIds)', { otherUserIds });
+    results.push({
+      otherUserId,
+      mutualFriends,
+    });
+  }
 
-  return qb.getMany();
+  return results;
 }
+
 
 } 
