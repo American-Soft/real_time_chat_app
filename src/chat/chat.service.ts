@@ -65,6 +65,7 @@ export class ChatService {
       throw new NotFoundException('Creator not found');
     }
     const members = await this.userRepository.findByIds(memberIds);
+    console.log(members);
     if (members.length !== memberIds.length) {
       throw new NotFoundException('Some members not found');
     }
@@ -81,7 +82,10 @@ export class ChatService {
       type: ChatRoomType.GROUP,
     });
     await this.chatRoomRepository.save(chatRoom);
-    return group;
+    return this.groupRepository.findOne({
+  where: { id: group.id },
+  relations: ['creator', 'members', 'admins'],
+});
   }
 
   async addMemberToGroup(
