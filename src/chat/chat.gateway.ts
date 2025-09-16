@@ -185,105 +185,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // Mark messages as read
-  @SubscribeMessage('markAsRead')
-  async handleMarkAsRead(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { senderId?: number; groupId?: number },
-  ) {
-    try {
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-      if (!client.user) {
-        return { error: 'Unauthorized' };
-      }
-
-      const targetId = parsedData.groupId ?? parsedData.senderId;
-      if (!targetId) return { error: 'senderId or groupId is required' };
-
-      await this.chatService.markMessagesAsRead(client.user.id, targetId);
-
-      // Notify the sender that messages have been read
-      if (parsedData.senderId) {
-        this.emitToUser(parsedData.senderId, 'messagesRead', {
-          readerId: client.user.id,
-        });
-      } else if (parsedData.groupId) {
-        // Also notify room for group reads
-        const chatRoom = await this.chatService.getOrCreateChatRoom(
-          client.user.id,
-          parsedData.groupId,
-          true,
-        );
-        this.server.to(chatRoom.roomId).emit('messagesRead', {
-          readerId: client.user.id,
-          roomId: chatRoom.roomId,
-        });
-      }
-
-      return { success: true };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }
-
-  // Typing indicator
-  @SubscribeMessage('typing')
-  async handleTyping(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { receiverId?: number; groupId?: number; isTyping: boolean },
-  ) {
-    try {
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-      if (!client.user) {
-        return { error: 'Unauthorized' };
-      }
-
-      const isGroup = !!parsedData.groupId;
-      const targetId = parsedData.groupId ?? parsedData.receiverId;
-      if (!targetId) return { error: 'receiverId or groupId is required' };
-      const chatRoom = await this.chatService.getOrCreateChatRoom(
-        client.user.id,
-        targetId,
-        isGroup,
-      );
-
-      // Emit typing indicator to other users in the room
-      client.to(chatRoom.roomId).emit('userTyping', {
-        userId: client.user.id,
-        isTyping: parsedData.isTyping,
-        roomId: chatRoom.roomId,
-      });
-      return { success: true };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }
-
-  // Get online status
-  @SubscribeMessage('getOnlineStatus')
-  async handleGetOnlineStatus(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { userIds: number[] },
-  ) {
-    try {
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-      if (!client.user) {
-        return { error: 'Unauthorized' };
-      }
-
-      const onlineStatus = {} as Record<number, boolean>;
-      parsedData.userIds.forEach((userId) => {
-        onlineStatus[userId] = this.isUserOnline(userId);
-      });
-
-      return { onlineStatus };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }
-
+  
   // Get messages via websocket (optional helper to avoid REST)
   @SubscribeMessage('getMessages')
   async handleGetMessages(
@@ -299,35 +201,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { error: error.message };
     }
   }
-
-  // Get unread counts for current user
-  @SubscribeMessage('getUnreadCount')
-  async handleGetUnreadCount(
-    @ConnectedSocket() client: AuthenticatedSocket,
-  ) {
-    try {
-      if (!client.user) return { error: 'Unauthorized' };
-      const result = await this.chatService.getUnreadCount(client.user.id);
-      return { success: true, unread: result };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }
-
-  // Get chat rooms (conversations) for current user
-  @SubscribeMessage('getUserChatRooms')
-  async handleGetUserChatRooms(
-    @ConnectedSocket() client: AuthenticatedSocket,
-  ) {
-    try {
-      if (!client.user) return { error: 'Unauthorized' };
-      const rooms = await this.chatService.getUserChatRooms(client.user.id);
-      return { success: true, rooms };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }
-
     isUserOnline(userId: number): boolean {
     return this.connectedUsers.has(userId);
   }

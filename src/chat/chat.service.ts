@@ -223,6 +223,26 @@ export class ChatService {
     return chatRoom;
   }
 
+  async getChatParticipantIds(userId: number, targetId: number,isGroup: boolean): Promise<number[]> {
+    if (isGroup) {
+      const group = await this.groupRepository.findOne({
+        where: { id: targetId },
+        relations: ['members'],
+      });
+      if (!group) throw new NotFoundException('Group not found');
+      
+      // Check if user is a member
+      if (!group.members.some((member) => member.id === userId)) {
+        throw new ForbiddenException('You are not a member of this group');
+      }
+      return group.members.map(member => member.id);
+    }
+    const canChat = await this.areFriends(userId, targetId);
+    if (!canChat)
+      throw new ForbiddenException('You can only chat with your friends');
+    return [userId, targetId];
+  }
+
   // Send a message
   async sendMessage(
     senderId: number,
@@ -338,7 +358,7 @@ export class ChatService {
   }
 
   // Get unread message count
-  async getUnreadCount(userId: number): Promise<{ [key: number]: number }> {
+  async getUnreadCount(userId: number): Promise<Record<string, number>> {
     const unreadMessages = await this.messageRepository
       .createQueryBuilder('message')
       .leftJoin('message.chatRoom', 'chatRoom')
@@ -357,13 +377,15 @@ export class ChatService {
       .groupBy('message.senderId, chatRoom.group.id')
       .getRawMany();
 
-    const result = {};
-    unreadMessages.forEach((item) => {
-      const key = item.groupId ? `group_${item.groupId}` : item.senderId;
-      result[key] = parseInt(item.count);
-    });
+   
+  const result: Record<string, number> = {};
+  unreadMessages.forEach((item) => {
+    const key = item.groupId ? `group_${item.groupId}` : `${item.senderId}`;
+    const count = parseInt(item.count, 10) || 0;
+    result[key] = (result[key] || 0) + count; // accumulate
+  }); 
 
-    return result;
+  return result;
   }
 
   // Get user's chat rooms (conversations)
