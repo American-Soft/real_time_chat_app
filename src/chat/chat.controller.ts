@@ -156,17 +156,7 @@ export class ChatController {
   @Post('send-message')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Send a message (text or file)' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        receiverId: { type: 'number', example: 2, description: 'Receiver user ID (for 1-to-1 chat)' },
-        groupId: { type: 'number', example: 1, description: 'Group ID (for group chat)' },
-        content: { type: 'string', example: 'Hello there!', description: 'Message content (optional when file is sent)' },
-        file: { type: 'string', format: 'binary', description: 'File to upload (optional)' },
-      },
-    },
-  })
+  @ApiBody({type: SendMessageDto})
   @ApiResponse({
     status: 201,
     description: 'Message sent successfully',
