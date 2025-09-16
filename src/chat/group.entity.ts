@@ -1,5 +1,5 @@
 import { User } from "src/user/user.entity";
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('groups')
 export class Group {
@@ -12,11 +12,11 @@ export class Group {
     @ManyToOne(() => User, { eager: true })
     creator: User;
 
-    @ManyToOne(() => User, { eager: true })
+    @ManyToMany(() => User, { eager: true })  // groups can have many members
     @JoinTable()
     members: User[];
 
-    @ManyToOne(() => User, { eager: true })
+    @ManyToMany(() => User, { eager: true })  // groups can have many admins
     @JoinTable()
     admins: User[];
 
