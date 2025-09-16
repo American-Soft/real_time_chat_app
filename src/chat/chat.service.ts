@@ -325,7 +325,7 @@ export class ChatService {
     });
 
     return {
-      messages: messages.reverse(), // Show oldest first
+      messages: messages, // Show oldest first
       total,
       page,
       limit,
