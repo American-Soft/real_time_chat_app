@@ -300,6 +300,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+   @SubscribeMessage('getUnreadCount')
+  async handleGetUnreadCount(
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ) {
+    try {
+      if (!client.user) return { error: 'Unauthorized' };
+      const result = await this.chatService.getUnreadCount(client.user.id);
+      return { success: true, unread: result };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  // Get chat rooms (conversations) for current user
+  @SubscribeMessage('getUserChatRooms')
+  async handleGetUserChatRooms(
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ) {
+    try {
+      if (!client.user) return { error: 'Unauthorized' };
+      const rooms = await this.chatService.getUserChatRooms(client.user.id);
+      return { success: true, rooms };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
   isUserOnline(userId: number): boolean {
     return this.connectedUsers.has(userId);
   }
