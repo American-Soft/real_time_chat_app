@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import { SearchUsersDto } from './dtos/search-users.dto';
 import { MutualFriendsDto } from './dtos/mutual-friends.dto';
+import { UnfriendDto } from './dtos/unfriend.dto';
 
 @ApiTags('Friendship')
 @ApiBearerAuth()
@@ -200,5 +201,22 @@ async mutualFriends(
 ) {
   return this.friendshipService.getMutualFriends(user.id, dto.otherUserIds);
 }
+
+  @ApiOperation({ summary: 'Unfriend a user' })
+  @ApiBody({ type: UnfriendDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Users are no longer friends',
+    schema: { example: { message: 'Unfriended successfully.' } },
+  })
+  @ApiResponse({ status: 404, description: 'No accepted friendship found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('unfriend')
+  async unfriend(
+    @CurrentUser() user: any,
+    @Body() dto: UnfriendDto,
+  ) {
+    return this.friendshipService.unfriend(user.id, dto);
+  }
 
 } 

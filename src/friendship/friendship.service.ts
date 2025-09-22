@@ -8,6 +8,7 @@ import { SendFriendRequestDto } from './dtos/send-friend-request.dto';
 import { AcceptDeclineRequestDto } from './dtos/accept-decline-request.dto';
 import { SearchUsersDto } from './dtos/search-users.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { UnfriendDto } from './dtos/unfriend.dto';
 
 @Injectable()
 export class FriendshipService {
@@ -137,6 +138,27 @@ export class FriendshipService {
       where: { receiver: { id: userId }, status: FriendshipStatus.PENDING },
       relations: ['requester'],
     });
+  }
+
+  async unfriend(userId: number, dto: UnfriendDto) {
+    if (userId === dto.otherUserId) {
+      throw new BadRequestException('You cannot unfriend yourself.');
+    }
+
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId }, receiver: { id: dto.otherUserId }, status: FriendshipStatus.ACCEPTED },
+        { requester: { id: dto.otherUserId }, receiver: { id: userId }, status: FriendshipStatus.ACCEPTED },
+      ],
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('No accepted friendship found.');
+    }
+
+    await this.friendshipRepository.remove(friendship);
+
+    return { message: 'Unfriended successfully.' };
   }
 
 async getMutualFriends(userId: number, otherUserIds: number[]) {

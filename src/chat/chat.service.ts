@@ -57,7 +57,7 @@ export class ChatService {
     userID: number,
     createGropuDto: CreateGroupDto,
   ): Promise<Group> {
-    const { name, memberIds } = createGropuDto;
+    const { name, memberIds, description } = createGropuDto;
     const creator = await this.userRepository.findOne({
       where: { id: userID },
     });
@@ -71,6 +71,7 @@ export class ChatService {
     }
     const group = this.groupRepository.create({
       name,
+      description,
       creator,
       members,
       admins: [creator],
@@ -83,9 +84,9 @@ export class ChatService {
     });
     await this.chatRoomRepository.save(chatRoom);
     return this.groupRepository.findOne({
-  where: { id: group.id },
-  relations: ['creator', 'members', 'admins'],
-});
+      where: { id: group.id },
+      relations: ['creator', 'members', 'admins'],
+    });
   }
 
   async addMemberToGroup(
@@ -227,14 +228,14 @@ export class ChatService {
     return chatRoom;
   }
 
-  async getChatParticipantIds(userId: number, targetId: number,isGroup: boolean): Promise<number[]> {
+  async getChatParticipantIds(userId: number, targetId: number, isGroup: boolean): Promise<number[]> {
     if (isGroup) {
       const group = await this.groupRepository.findOne({
         where: { id: targetId },
         relations: ['members'],
       });
       if (!group) throw new NotFoundException('Group not found');
-      
+
       // Check if user is a member
       if (!group.members.some((member) => member.id === userId)) {
         throw new ForbiddenException('You are not a member of this group');
@@ -381,15 +382,15 @@ export class ChatService {
       .groupBy('message.senderId, chatRoom.group.id')
       .getRawMany();
 
-   
-  const result: Record<string, number> = {};
-  unreadMessages.forEach((item) => {
-    const key = item.groupId ? `group_${item.groupId}` : `${item.senderId}`;
-    const count = parseInt(item.count, 10) || 0;
-    result[key] = (result[key] || 0) + count; // accumulate
-  }); 
 
-  return result;
+    const result: Record<string, number> = {};
+    unreadMessages.forEach((item) => {
+      const key = item.groupId ? `group_${item.groupId}` : `${item.senderId}`;
+      const count = parseInt(item.count, 10) || 0;
+      result[key] = (result[key] || 0) + count; // accumulate
+    });
+
+    return result;
   }
 
   // Get user's chat rooms (conversations)
