@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { ChatModule } from './chat/chat.module';
 import { UploadModule } from './upload/upload.module';
+import { CallModule } from './call/call.module';
 import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [UserModule,
@@ -15,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
     FriendshipModule,
     ChatModule,
     UploadModule,
+    CallModule,
     AuthModule,
     TypeOrmModule.forRootAsync({
     inject: [ConfigService],
