@@ -9,6 +9,8 @@ export class Group {
     @Column()
     name: string;
 
+    @Column()
+    description: string;
     @ManyToOne(() => User, { eager: true })
     creator: User;
 

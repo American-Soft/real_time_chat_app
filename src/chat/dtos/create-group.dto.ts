@@ -18,4 +18,12 @@ export class CreateGroupDto {
   @IsArray()
   @IsNumber({}, { each: true })
   memberIds: number[];
+
+  @ApiProperty({
+    example: ["Group for discussing development topics"],
+    description: 'Description of the group',
+    type: [String],
+  })
+  @IsString()
+  description: string;
 }
