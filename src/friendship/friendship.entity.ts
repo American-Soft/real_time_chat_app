@@ -28,6 +28,12 @@ export class Friendship {
   })
   status: FriendshipStatus;
 
+  @Column({ type: 'boolean', default: false })
+  isBlocked: boolean;
+
+  @ManyToOne(() => User, { eager: true, nullable: true })
+  blockedBy?: User;
+
   @CreateDateColumn()
   createdAt: Date;
 

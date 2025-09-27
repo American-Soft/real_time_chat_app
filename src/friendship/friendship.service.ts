@@ -9,6 +9,8 @@ import { AcceptDeclineRequestDto } from './dtos/accept-decline-request.dto';
 import { SearchUsersDto } from './dtos/search-users.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UnfriendDto } from './dtos/unfriend.dto';
+import { BlockUserDto } from './dtos/block-user.dto';
+import { UnblockUserDto } from './dtos/unblock-user.dto';
 
 @Injectable()
 export class FriendshipService {
@@ -161,6 +163,75 @@ export class FriendshipService {
     return { message: 'Unfriended successfully.' };
   }
 
+  async blockUser(userId: number, dto: BlockUserDto) {
+    if (userId === dto.otherUserId) {
+      throw new BadRequestException('You cannot block yourself.');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const other = await this.userRepository.findOne({ where: { id: dto.otherUserId } });
+    if (!user || !other) {
+      throw new NotFoundException('User not found.');
+    }
+
+    let friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId }, receiver: { id: dto.otherUserId } },
+        { requester: { id: dto.otherUserId }, receiver: { id: userId } },
+      ],
+      relations: ['requester', 'receiver', 'blockedBy'],
+    });
+
+    if (!friendship) {
+      // create a record to represent a blocked relationship even if not friends
+      friendship = this.friendshipRepository.create({
+        requester: user,
+        receiver: other,
+        status: FriendshipStatus.DECLINED,
+      });
+    }
+
+    friendship.isBlocked = true;
+    friendship.blockedBy = user;
+
+    await this.friendshipRepository.save(friendship);
+    return { message: 'User blocked successfully.' };
+  }
+
+  async unblockUser(userId: number, dto: UnblockUserDto) {
+    if (userId === dto.otherUserId) {
+      throw new BadRequestException('You cannot unblock yourself.');
+    }
+
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId }, receiver: { id: dto.otherUserId } },
+        { requester: { id: dto.otherUserId }, receiver: { id: userId } },
+      ],
+      relations: ['blockedBy'],
+    });
+
+    if (!friendship || !friendship.isBlocked || friendship.blockedBy?.id !== userId) {
+      throw new NotFoundException('No block entry found for this user.');
+    }
+
+    friendship.isBlocked = false;
+    friendship.blockedBy = null;
+    await this.friendshipRepository.save(friendship);
+    return { message: 'User unblocked successfully.' };
+  }
+
+  async isBlockedBetween(userId: number, otherUserId: number): Promise<{ blocked: boolean; blockedById?: number }> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId }, receiver: { id: otherUserId } },
+        { requester: { id: otherUserId }, receiver: { id: userId } },
+      ],
+      relations: ['blockedBy'],
+    });
+    if (!friendship) return { blocked: false };
+    return { blocked: !!friendship.isBlocked, blockedById: friendship.blockedBy?.id };
+  }
 async getMutualFriends(userId: number, otherUserIds: number[]) {
   if (!otherUserIds || otherUserIds.length === 0) {
     return [];
