@@ -7,17 +7,17 @@ import { ChatRoom } from './chat-room.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
 import { Friendship } from '../friendship/friendship.entity';
- import { ChatGateway } from './chat.gateway';
+import { ChatGateway } from './chat.gateway';
 import { Group } from './group.entity';
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatRoom, Message, User, Friendship,Group]),
-    
+    TypeOrmModule.forFeature([ChatRoom, Message, User, Friendship, Group]),
+
   ],
   controllers: [ChatController],
-  providers: [ChatService,  FileUploadService,ChatGateway],
+  providers: [ChatService, FileUploadService, ChatGateway],
   exports: [ChatService],
 })
 export class ChatModule { } 

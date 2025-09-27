@@ -14,6 +14,8 @@ import {
 import { SearchUsersDto } from './dtos/search-users.dto';
 import { MutualFriendsDto } from './dtos/mutual-friends.dto';
 import { UnfriendDto } from './dtos/unfriend.dto';
+import { BlockUserDto } from './dtos/block-user.dto';
+import { UnblockUserDto } from './dtos/unblock-user.dto';
 
 @ApiTags('Friendship')
 @ApiBearerAuth()
@@ -217,6 +219,30 @@ async mutualFriends(
     @Body() dto: UnfriendDto,
   ) {
     return this.friendshipService.unfriend(user.id, dto);
+  }
+
+  @ApiOperation({ summary: 'Block a user' })
+  @ApiBody({ type: BlockUserDto })
+  @ApiResponse({ status: 200, description: 'User blocked', schema: { example: { message: 'User blocked successfully.' } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('block')
+  async block(
+    @CurrentUser() user: any,
+    @Body() dto: BlockUserDto,
+  ) {
+    return this.friendshipService.blockUser(user.id, dto);
+  }
+
+  @ApiOperation({ summary: 'Unblock a user' })
+  @ApiBody({ type: UnblockUserDto })
+  @ApiResponse({ status: 200, description: 'User unblocked', schema: { example: { message: 'User unblocked successfully.' } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('unblock')
+  async unblock(
+    @CurrentUser() user: any,
+    @Body() dto: UnblockUserDto,
+  ) {
+    return this.friendshipService.unblockUser(user.id, dto);
   }
 
 } 

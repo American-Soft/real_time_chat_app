@@ -163,18 +163,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         isGroup,
       );
       // Emit message to all users in the room
-      this.server.to(chatRoom.roomId).emit('newMessage', {
-        message,
-        roomId: chatRoom.roomId,
-      });
-
-      // Additionally emit directly to target user in 1:1 chats (in case they haven't joined the room yet)
-      if (!isGroup && parsedDto.receiverId) {
+      // Emit message to all users in the room (only for groups)
+      if (isGroup) {
+        this.server.to(chatRoom.roomId).emit('newMessage', {
+          message,
+          roomId: chatRoom.roomId,
+        });
+      } else if (parsedDto.receiverId) {
+        // Direct emit for 1:1 chats
         this.emitToUser(parsedDto.receiverId, 'newMessage', {
           message,
           roomId: chatRoom.roomId,
         });
       }
+
 
       // Emit to sender for confirmation
       client.emit('messageSent', { message, roomId: chatRoom.roomId });
@@ -300,7 +302,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-   @SubscribeMessage('getUnreadCount')
+  @SubscribeMessage('getUnreadCount')
   async handleGetUnreadCount(
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {

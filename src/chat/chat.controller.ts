@@ -24,6 +24,9 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nes
 import { CreateGroupDto } from './dtos/create-group.dto';
 import { AddGroupMemberDto } from './dtos/add-group-member.dto';
 import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
+import { ExitGroupDto } from './dtos/exit-group.dto';
+import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
+import { ApiParam } from '@nestjs/swagger';
 @ApiTags('chat')
 @ApiBearerAuth()
 @Controller('chat')
@@ -125,6 +128,34 @@ export class ChatController {
     return this.chatService.addGroupAdmin(user.id, addGroupAdminDto);
   }
 
+  @Post('group/exit')
+  @ApiOperation({ summary: 'Exit a group chat' })
+  @ApiBody({ type: ExitGroupDto })
+  @ApiResponse({ status: 200, description: 'Exited the group successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - creator cannot exit' })
+  @ApiResponse({ status: 404, description: 'Group not found' })
+  async exitGroup(
+    @CurrentUser() user: User,
+    @Body() dto: ExitGroupDto,
+  ) {
+    return this.chatService.exitGroup(user.id, dto);
+  }
+
+  @Post('group/remove-admin')
+  @ApiOperation({ summary: 'Remove an admin from a group (creator cannot be removed)' })
+  @ApiBody({ type: RemoveGroupAdminDto })
+  @ApiResponse({ status: 200, description: 'Admin removed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only admins, and creator cannot be removed' })
+  @ApiResponse({ status: 404, description: 'Group or admin not found' })
+  async removeGroupAdmin(
+    @CurrentUser() user: User,
+    @Body() dto: RemoveGroupAdminDto,
+  ) {
+    return this.chatService.removeGroupAdmin(user.id, dto);
+  }
+
   @Get('groups')
   @ApiOperation({ summary: 'Get user groups' })
   @ApiResponse({
@@ -156,7 +187,7 @@ export class ChatController {
   @Post('send-message')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Send a message (text or file)' })
-  @ApiBody({type: SendMessageDto})
+  @ApiBody({ type: SendMessageDto })
   @ApiResponse({
     status: 201,
     description: 'Message sent successfully',
@@ -346,4 +377,5 @@ export class ChatController {
     const areFriends = await this.chatService.areFriends(user.id, userId);
     return { canChat: areFriends };
   }
+
 } 

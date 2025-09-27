@@ -18,6 +18,8 @@ import { Group } from './group.entity';
 import { ChatRoomType } from 'src/enums/chat-room-type';
 import { AddGroupMemberDto } from './dtos/add-group-member.dto';
 import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
+import { ExitGroupDto } from './dtos/exit-group.dto';
+import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
 
 @Injectable()
 export class ChatService {
@@ -49,8 +51,23 @@ export class ChatService {
           status: FriendshipStatus.ACCEPTED,
         },
       ],
+      relations: ['blockedBy'],
     });
-    return !!friendship;
+    if (!friendship) return false;
+    if ((friendship as any).isBlocked) return false;
+    return true;
+  }
+
+  // Check if users are blocked
+  async areBlocked(userId1: number, userId2: number): Promise<boolean> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId1 }, receiver: { id: userId2 } },
+        { requester: { id: userId2 }, receiver: { id: userId1 } },
+      ],
+      relations: ['blockedBy'],
+    });
+    return !!(friendship && (friendship as any).isBlocked);
   }
 
   async createGroup(
@@ -153,6 +170,52 @@ export class ChatService {
     return group;
   }
 
+  async removeGroupAdmin(
+    userId: number,
+    dto: RemoveGroupAdminDto,
+  ): Promise<Group> {
+    const { groupId, userId: targetAdminId } = dto;
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['creator', 'members', 'admins'],
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+    // Only existing admins can remove another admin
+    if (!group.admins.some((admin) => admin.id === userId)) {
+      throw new ForbiddenException('Only group admins can remove admins');
+    }
+
+    // Creator cannot be removed by anyone
+    if (group.creator?.id === targetAdminId) {
+      throw new ForbiddenException('Cannot remove the group creator as admin');
+    }
+
+    // Target must be an admin
+    if (!group.admins.some((admin) => admin.id === targetAdminId)) {
+      throw new NotFoundException('Target user is not an admin');
+    }
+
+    // Remove target from admins
+    group.admins = group.admins.filter((a) => a.id !== targetAdminId);
+
+    // Ensure at least one admin remains; if none, promote creator or first member
+    if (!group.admins || group.admins.length === 0) {
+      if (group.creator) {
+        group.admins = [group.creator];
+      } else if (group.members && group.members.length > 0) {
+        group.admins = [group.members[0]];
+      }
+    }
+
+    await this.groupRepository.save(group);
+    return this.groupRepository.findOne({
+      where: { id: group.id },
+      relations: ['creator', 'members', 'admins'],
+    });
+  }
+
   async getUserGroups(userId: number): Promise<Group[]> {
     return this.groupRepository.find({
       where: { members: { id: userId } },
@@ -160,6 +223,46 @@ export class ChatService {
       order: { updatedAt: 'DESC' },
     });
   }
+
+  async exitGroup(userId: number, dto: ExitGroupDto): Promise<Group> {
+    const group = await this.groupRepository.findOne({
+      where: { id: dto.groupId },
+      relations: ['creator', 'members', 'admins'],
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const isMember = group.members.some((m) => m.id === userId);
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+
+    // Prevent creator from exiting to avoid orphaned group
+    if (group.creator?.id === userId) {
+      throw new ForbiddenException('Group creator cannot exit the group');
+    }
+
+    // Remove from members
+    group.members = group.members.filter((m) => m.id !== userId);
+    // Remove from admins if present
+    group.admins = group.admins?.filter((a) => a.id !== userId) || [];
+
+    // Ensure there is at least one admin; if none, promote first remaining member
+    if (
+      group.members.length > 0 &&
+      (!group.admins || group.admins.length === 0)
+    ) {
+      group.admins = [group.members[0]];
+    }
+
+    await this.groupRepository.save(group);
+    return this.groupRepository.findOne({
+      where: { id: group.id },
+      relations: ['creator', 'members', 'admins'],
+    });
+  }
+
   // Get or create chat room between two users
   async getOrCreateChatRoom(
     userId1: number,
@@ -199,6 +302,14 @@ export class ChatService {
     if (!areFriends)
       throw new ForbiddenException('You can only chat with your friends');
 
+    // Block check: if either has blocked the other, forbid
+    /*   const isBlocked = await this.areBlocked(userId1, userId2OrGroupId);
+      if (isBlocked) {
+        throw new ForbiddenException(
+          'Messaging is blocked between these users',
+        );
+      }
+   */
     let chatRoom = await this.chatRoomRepository.findOne({
       where: [
         { user1: { id: userId1 }, user2: { id: userId2OrGroupId } },
@@ -216,6 +327,12 @@ export class ChatService {
 
       if (!user1 || !user2) throw new NotFoundException('User not found');
 
+      const isBlocked = await this.areBlocked(userId1, userId2OrGroupId);
+      if (isBlocked) {
+        throw new ForbiddenException(
+          'Messaging is blocked between these users',
+        );
+      }
       chatRoom = this.chatRoomRepository.create({
         user1,
         user2,
@@ -228,7 +345,11 @@ export class ChatService {
     return chatRoom;
   }
 
-  async getChatParticipantIds(userId: number, targetId: number, isGroup: boolean): Promise<number[]> {
+  async getChatParticipantIds(
+    userId: number,
+    targetId: number,
+    isGroup: boolean,
+  ): Promise<number[]> {
     if (isGroup) {
       const group = await this.groupRepository.findOne({
         where: { id: targetId },
@@ -240,11 +361,18 @@ export class ChatService {
       if (!group.members.some((member) => member.id === userId)) {
         throw new ForbiddenException('You are not a member of this group');
       }
-      return group.members.map(member => member.id);
+      return group.members.map((member) => member.id);
     }
     const canChat = await this.areFriends(userId, targetId);
     if (!canChat)
       throw new ForbiddenException('You can only chat with your friends');
+
+    // Block check for 1:1 chats
+    /*     const isBlocked = await this.areBlocked(userId, targetId);
+        if (isBlocked) {
+          throw new ForbiddenException('Messaging is blocked between these users');
+        } */
+
     return [userId, targetId];
   }
 
@@ -268,11 +396,17 @@ export class ChatService {
     if (groupId) {
       chatRoom = await this.getOrCreateChatRoom(senderId, groupId, true);
     } else if (receiverId) {
+      // Block check before creating room and saving message
+      const isBlocked = await this.areBlocked(senderId, receiverId);
+      if (isBlocked) {
+        throw new ForbiddenException(
+          'Messaging is blocked between these users',
+        );
+      }
       chatRoom = await this.getOrCreateChatRoom(senderId, receiverId);
     } else {
       throw new ForbiddenException('Must specify receiverId or groupId');
     }
-    // Get or create chat room
 
     // Create message
     const message = this.messageRepository.create({
@@ -295,6 +429,17 @@ export class ChatService {
     });
   }
 
+  // ---- Mute notifications ----
+  private computeMuteUntil(duration: '8h' | '24h' | '1w' | 'off'): Date | null {
+    if (duration === 'off') return null;
+    const now = new Date();
+    const muteUntil = new Date(now);
+    if (duration === '8h') muteUntil.setHours(muteUntil.getHours() + 8);
+    if (duration === '24h') muteUntil.setDate(muteUntil.getDate() + 1);
+    if (duration === '1w') muteUntil.setDate(muteUntil.getDate() + 7);
+    return muteUntil;
+  }
+
   // Get messages between two users
   async getMessages(
     userId: number,
@@ -312,10 +457,16 @@ export class ChatService {
     if (groupId) {
       chatRoom = await this.getOrCreateChatRoom(userId, groupId, true);
     } else if (receiverId) {
+      // Block check for 1:1 chats
+      /*       const isBlocked = await this.areBlocked(userId, receiverId);
+            if (isBlocked) {
+              throw new ForbiddenException('Messaging is blocked between these users');
+            } */
       chatRoom = await this.getOrCreateChatRoom(userId, receiverId);
     } else {
       throw new ForbiddenException('Must specify receiverId or groupId');
     }
+
     // Get messages with pagination
     const [messages, total] = await this.messageRepository.findAndCount({
       where: { chatRoom: { id: chatRoom.id } },
@@ -349,17 +500,25 @@ export class ChatService {
         true,
       );
     } else {
+      // Block check for 1:1 chats
+      const isBlocked = await this.areBlocked(userId, senderIdOrGroupId);
+      if (isBlocked) {
+        throw new ForbiddenException(
+          'Messaging is blocked between these users',
+        );
+      }
       chatRoom = await this.getOrCreateChatRoom(userId, senderIdOrGroupId);
     }
 
-    await this.messageRepository.update(
-      {
-        chatRoom: { id: chatRoom.id },
-        sender: { id: isGroup ? undefined : senderIdOrGroupId },
-        isRead: false,
-      },
-      { isRead: true },
-    );
+    await this.messageRepository
+      .createQueryBuilder()
+      .update()
+      .set({ isRead: true })
+      .where("chatRoomId = :chatRoomId", { chatRoomId: chatRoom.id })
+      .andWhere("isRead = false")
+      .andWhere("senderId = :senderId", { senderId: senderIdOrGroupId })
+      .execute();
+
   }
 
   // Get unread message count
@@ -381,7 +540,6 @@ export class ChatService {
       ])
       .groupBy('message.senderId, chatRoom.group.id')
       .getRawMany();
-
 
     const result: Record<string, number> = {};
     unreadMessages.forEach((item) => {
