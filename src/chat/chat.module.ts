@@ -9,6 +9,7 @@ import { User } from '../user/user.entity';
 import { Friendship } from '../friendship/friendship.entity';
 import { ChatGateway } from './chat.gateway';
 import { Group } from './group.entity';
+import { AgoraService } from 'src/call/agora.service';
 
 
 @Module({
@@ -17,7 +18,7 @@ import { Group } from './group.entity';
 
   ],
   controllers: [ChatController],
-  providers: [ChatService, FileUploadService, ChatGateway],
+  providers: [ChatService, FileUploadService, ChatGateway, AgoraService],
   exports: [ChatService],
 })
 export class ChatModule { } 

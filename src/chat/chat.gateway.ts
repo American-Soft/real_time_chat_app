@@ -16,6 +16,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JWTPayloadType } from '../utils/types';
+import { AgoraService } from 'src/call/agora.service';
 
 interface AuthenticatedSocket extends Socket {
   user?: User;
@@ -38,6 +39,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly agoraService: AgoraService,
+
   ) { }
 
   // Handle client connection
@@ -324,6 +327,181 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!client.user) return { error: 'Unauthorized' };
       const rooms = await this.chatService.getUserChatRooms(client.user.id);
       return { success: true, rooms };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  // ---- Call Signaling (Agora) ----
+  @SubscribeMessage('startCall')
+  async handleStartCall(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    data: { receiverId?: number; groupId?: number; callType: 'audio' | 'video' },
+  ) {
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!client.user) return { error: 'Unauthorized' };
+
+      const isGroup = !!parsed.groupId;
+      const targetId = parsed.groupId ?? parsed.receiverId;
+      if (!targetId) return { error: 'receiverId or groupId is required' };
+
+      // Validate and get participants
+      const participantIds = await this.chatService.getChatParticipantIds(
+        client.user.id,
+        targetId,
+        isGroup,
+      );
+
+      // Use chat room id as the Agora channel base
+      const chatRoom = await this.chatService.getOrCreateChatRoom(
+        client.user.id,
+        targetId,
+        isGroup,
+      );
+      const channel = `call:${chatRoom.roomId}`;
+
+      // ✅ Generate Agora token for the caller
+      const { token, expireAt } = this.agoraService.generateRtcToken(
+        channel,
+        client.user.id, // use user ID as UID
+      );
+
+      // Notify all other participants about incoming call
+      const others = participantIds.filter((id) => id !== client.user!.id);
+      this.emitToUsers(others, 'incomingCall', {
+        fromUserId: client.user.id,
+        callType: parsed.callType,
+        isGroup,
+        targetId,
+        roomId: chatRoom.roomId,
+        channel,
+        expireAt,
+      });
+
+      // Return channel + token to the caller
+      return {
+        success: true,
+        channel,
+        roomId: chatRoom.roomId,
+        token,
+        expireAt,
+      };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+
+  @SubscribeMessage('acceptCall')
+  async handleAcceptCall(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    data: { receiverId?: number; groupId?: number; channel: string },
+  ) {
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!client.user) return { error: 'Unauthorized' };
+      console.log('Accepting call with data:', parsed);
+      const isGroup = !!parsed.groupId;
+      const targetId = parsed.groupId ?? parsed.receiverId;
+      console.log('Parsed targetId:', targetId, 'isGroup:', isGroup);
+      if (!targetId || !parsed.channel) return { error: 'Invalid payload' };
+
+      // ✅ Generate Agora token for the callee
+      const { token, expireAt } = this.agoraService.generateRtcToken(
+        parsed.channel,
+        client.user.id, // use callee's user ID as UID
+      );
+
+      // Get other participants
+      const participantIds = await this.chatService.getChatParticipantIds(
+        client.user.id,
+        targetId,
+        isGroup,
+      );
+      const others = participantIds.filter((id) => id !== client.user!.id);
+
+      // Notify others that this user accepted the call
+      this.emitToUsers(others, 'callAccepted', {
+        byUserId: client.user.id,
+        channel: parsed.channel,
+        isGroup,
+        targetId,
+        expireAt,
+      });
+
+      return {
+        success: true,
+        channel: parsed.channel,
+        token,
+        expireAt,
+      };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+
+  @SubscribeMessage('rejectCall')
+  async handleRejectCall(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    data: { receiverId?: number; groupId?: number; channel: string; reason?: string },
+  ) {
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!client.user) return { error: 'Unauthorized' };
+      const isGroup = !!parsed.groupId;
+      const targetId = parsed.groupId ?? parsed.receiverId;
+      if (!targetId || !parsed.channel) return { error: 'Invalid payload' };
+
+      const participantIds = await this.chatService.getChatParticipantIds(
+        client.user.id,
+        targetId,
+        isGroup,
+      );
+      const others = participantIds.filter((id) => id !== client.user!.id);
+      this.emitToUsers(others, 'callRejected', {
+        byUserId: client.user.id,
+        channel: parsed.channel,
+        reason: parsed.reason ?? 'rejected',
+        isGroup,
+        targetId,
+      });
+      return { success: true };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  @SubscribeMessage('endCall')
+  async handleEndCall(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    data: { receiverId?: number; groupId?: number; channel: string },
+  ) {
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!client.user) return { error: 'Unauthorized' };
+      const isGroup = !!parsed.groupId;
+      const targetId = parsed.groupId ?? parsed.receiverId;
+      if (!targetId || !parsed.channel) return { error: 'Invalid payload' };
+
+      const participantIds = await this.chatService.getChatParticipantIds(
+        client.user.id,
+        targetId,
+        isGroup,
+      );
+      const others = participantIds.filter((id) => id !== client.user!.id);
+      this.emitToUsers(others, 'callEnded', {
+        byUserId: client.user.id,
+        channel: parsed.channel,
+        isGroup,
+        targetId,
+      });
+      return { success: true };
     } catch (error) {
       return { error: error.message };
     }
