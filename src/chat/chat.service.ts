@@ -218,7 +218,10 @@ export class ChatService {
 
   async getUserGroups(userId: number): Promise<Group[]> {
     return this.groupRepository.find({
-      where: { members: { id: userId } },
+      where: [
+        { members: { id: userId } },
+        { admins: { id: userId } },
+      ],
       relations: ['creator', 'members', 'admins'],
       order: { updatedAt: 'DESC' },
     });
@@ -558,6 +561,7 @@ export class ChatService {
         { user1: { id: userId } },
         { user2: { id: userId } },
         { group: { members: { id: userId } } },
+        { group: { admins: { id: userId } } },
       ],
       relations: [
         'user1',
