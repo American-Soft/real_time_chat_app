@@ -82,15 +82,29 @@ export class ChatService {
       throw new NotFoundException('Creator not found');
     }
     const members = await this.userRepository.findByIds(memberIds);
-    console.log(members);
     if (members.length !== memberIds.length) {
       throw new NotFoundException('Some members not found');
+    }
+    const allowedMembers: User[] = [];
+    for (const member of members) {
+      const areFriends = await this.areFriends(userID, member.id);
+      if (!areFriends) {
+        throw new ForbiddenException(
+          `You can only add friends to the group. ${member.username || 'User ' + member.id} is not your friend.`,
+        );
+      }
+      allowedMembers.push(member);
+    }
+
+    const allMembers = [...allowedMembers];
+    if (!allMembers.some((m) => m.id === creator.id)) {
+      allMembers.push(creator);
     }
     const group = this.groupRepository.create({
       name,
       description,
       creator,
-      members,
+      members: allMembers,
       admins: [creator],
     });
     await this.groupRepository.save(group);
