@@ -11,10 +11,14 @@ export class Group {
 
     @Column()
     description: string;
+
+    @Column({ nullable: true })
+    image: string;
+
     @ManyToOne(() => User, { eager: true })
     creator: User;
 
-    @ManyToMany(() => User, { eager: true })  // groups can have many members
+    @ManyToMany(() => User, { eager: true })
     @JoinTable()
     members: User[];
 

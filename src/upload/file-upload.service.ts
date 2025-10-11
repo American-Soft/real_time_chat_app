@@ -7,6 +7,10 @@ export class FileUploadService {
     return `/uploads/chat/${filename}`;
   }
 
+  getGroupImageUrl(filename: string): string {
+    return `/uploads/groups/${filename}`;
+  }
+
   getMessageTypeFromMimeType(mimeType: string): MessageType {
     if (mimeType === 'text/plain' || mimeType.startsWith('text/')) {
       return MessageType.TEXT;
