@@ -20,6 +20,7 @@ import { AddGroupMemberDto } from './dtos/add-group-member.dto';
 import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
 import { ExitGroupDto } from './dtos/exit-group.dto';
 import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
+import { UpdateGroupDto } from './dtos/update-group-dto';
 
 @Injectable()
 export class ChatService {
@@ -74,7 +75,7 @@ export class ChatService {
     userID: number,
     createGropuDto: CreateGroupDto,
   ): Promise<Group> {
-    const { name, memberIds, description } = createGropuDto;
+    const { name, memberIds, description, imageUrl } = createGropuDto;
     const creator = await this.userRepository.findOne({
       where: { id: userID },
     });
@@ -104,6 +105,7 @@ export class ChatService {
       name,
       description,
       creator,
+      image: imageUrl,
       members: allMembers,
       admins: [creator],
     });
@@ -120,6 +122,42 @@ export class ChatService {
     });
   }
 
+
+  async updateGroup(
+    userId: number,
+    groupId: number,
+    updateGroupDto: UpdateGroupDto,
+  ): Promise<Group> {
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['creator', 'members', 'admins'],
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (!group.admins.some((admin) => admin.id === userId)) {
+      throw new ForbiddenException('Only group admins can update the group');
+    }
+
+    if (updateGroupDto.name !== undefined) {
+      group.name = updateGroupDto.name;
+    }
+    if (updateGroupDto.description !== undefined) {
+      group.description = updateGroupDto.description;
+    }
+    if (updateGroupDto.imageUrl !== undefined) {
+      group.image = updateGroupDto.imageUrl;
+    }
+
+    await this.groupRepository.save(group);
+
+    return this.groupRepository.findOne({
+      where: { id: group.id },
+      relations: ['creator', 'members', 'admins'],
+    });
+  }
   async addMemberToGroup(
     userId: number,
     AddGroupMemberDto: AddGroupMemberDto,

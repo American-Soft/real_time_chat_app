@@ -9,6 +9,7 @@ import {
   UploadedFile,
   Param,
   ParseIntPipe,
+  Patch,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ChatService } from './chat.service';
@@ -27,6 +28,7 @@ import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
 import { ExitGroupDto } from './dtos/exit-group.dto';
 import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
 import { ApiParam } from '@nestjs/swagger';
+import { UpdateGroupDto } from './dtos/update-group-dto';
 @ApiTags('chat')
 @ApiBearerAuth()
 @Controller('chat')
@@ -40,6 +42,8 @@ export class ChatController {
 
   @Post('group')
   @ApiOperation({ summary: 'Create a new group chat' })
+  @UseInterceptors(FileInterceptor('group-image'))
+
   @ApiBody({ type: CreateGroupDto })
   @ApiResponse({
     status: 201,
@@ -48,6 +52,8 @@ export class ChatController {
       example: {
         id: 1,
         name: 'Study Group',
+        description: 'Group for study discussions',
+        image: '/uploads/groups/1234567890-image.jpg',
         creator: { id: 1, username: 'john' },
         admins: [{ id: 1, username: 'john' }],
         members: [{ id: 1, username: 'john' }, { id: 2, username: 'jane' }],
@@ -62,8 +68,62 @@ export class ChatController {
   async createGroup(
     @CurrentUser() user: User,
     @Body() createGroupDto: CreateGroupDto,
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.chatService.createGroup(user.id, createGroupDto);
+    let imageUrl = createGroupDto.imageUrl;
+
+    if (file) {
+      imageUrl = this.fileUploadService.getGroupImageUrl(file.filename);
+    }
+    return this.chatService.createGroup(user.id, {
+      ...createGroupDto,
+      imageUrl
+    });
+  }
+
+
+  @Patch('group/:groupId/update')
+  @UseInterceptors(FileInterceptor('group-image'))
+  @ApiOperation({ summary: 'Update group information (name, description, image)' })
+  @ApiParam({ name: 'groupId', description: 'Group ID to update' })
+  @ApiBody({ type: UpdateGroupDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Group updated successfully',
+    schema: {
+      example: {
+        id: 1,
+        name: 'Updated Study Group',
+        description: 'Updated group description',
+        image: '/uploads/groups/1234567890-new-image.jpg',
+        creator: { id: 1, username: 'john' },
+        members: [
+          { id: 1, username: 'john' },
+          { id: 2, username: 'jane' },
+        ],
+        admins: [{ id: 1, username: 'john' }],
+        createdAt: '2025-07-19T12:00:00.000Z',
+        updatedAt: '2025-07-19T12:30:00.000Z',
+      },
+    },
+  })
+
+  @ApiResponse({ status: 400, description: 'Bad Request - invalid data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Only admins can update group' })
+  @ApiResponse({ status: 404, description: 'Group not found' })
+  async updateGroup(
+    @CurrentUser() user: User,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Body() updateGroupDto: UpdateGroupDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+
+    if (file) {
+      updateGroupDto.imageUrl = this.fileUploadService.getGroupImageUrl(file.filename);
+    }
+
+    return this.chatService.updateGroup(user.id, groupId, updateGroupDto);
   }
 
   @Post('group/add-member')

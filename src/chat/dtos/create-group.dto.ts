@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateGroupDto {
   @ApiProperty({
@@ -17,6 +18,7 @@ export class CreateGroupDto {
   })
   @IsArray()
   @IsNumber({}, { each: true })
+  @Type(() => Number)
   memberIds: number[];
 
   @ApiProperty({
@@ -26,4 +28,13 @@ export class CreateGroupDto {
   })
   @IsString()
   description: string;
+
+  @ApiProperty({
+    example: 'https://example.com/group-image.png',
+    description: 'URL of the group image',
+  })
+  @IsString()
+  @IsOptional()
+  imageUrl: string;
+
 }
