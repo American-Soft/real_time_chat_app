@@ -29,8 +29,16 @@ import { AuthModule } from './auth/auth.module';
       database: configService.get<string>('DB_DATABASE'),
       autoLoadEntities: true,
       synchronize: true,
+      // SSL configuration for production (Railway, PlanetScale, etc.)
+      ssl: process.env.DB_SSL === 'true' ? {
+        rejectUnauthorized: false
+      } : false,
+      // Connection pool settings
+      extra: {
+        connectionLimit: 10,
+      },
     }),
-  
+
   }),
   ConfigModule.forRoot({
     isGlobal: true,
