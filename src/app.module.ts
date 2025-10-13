@@ -20,24 +20,49 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
     TypeOrmModule.forRootAsync({
     inject: [ConfigService],
-    useFactory: async (configService: ConfigService) => ({
-      type: 'mysql',
-      host: configService.get<string>("DB_HOST"),
-      port: configService.get<number>('DB_PORT'),
-      username: configService.get<string>('DB_USERNAME'),
-      password: configService.get<string>('DB_PASSWORD'),
-      database: configService.get<string>('DB_DATABASE'),
-      autoLoadEntities: true,
-      synchronize: true,
-      // SSL configuration for production (Railway, PlanetScale, etc.)
-      ssl: process.env.DB_SSL === 'true' ? {
-        rejectUnauthorized: false
-      } : false,
-      // Connection pool settings
-      extra: {
-        connectionLimit: 10,
-      },
-    }),
+    useFactory: async (configService: ConfigService) => {
+      // Check if DATABASE_URL is provided (Railway's connection string)
+      const databaseUrl = configService.get<string>('DATABASE_URL');
+
+      if (databaseUrl) {
+        // Parse Railway's DATABASE_URL
+        const url = new URL(databaseUrl);
+        return {
+          type: 'mysql' as const,
+          host: url.hostname,
+          port: parseInt(url.port) || 3306,
+          username: url.username,
+          password: url.password,
+          database: url.pathname.slice(1), // Remove leading '/'
+          autoLoadEntities: true,
+          synchronize: true,
+          ssl: {
+            rejectUnauthorized: false
+          },
+          extra: {
+            connectionLimit: 10,
+          },
+        };
+      }
+
+      // Fallback to individual environment variables (local development)
+      return {
+        type: 'mysql' as const,
+        host: configService.get<string>("DB_HOST"),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        autoLoadEntities: true,
+        synchronize: true,
+        ssl: process.env.DB_SSL === 'true' ? {
+          rejectUnauthorized: false
+        } : false,
+        extra: {
+          connectionLimit: 10,
+        },
+      };
+    },
 
   }),
   ConfigModule.forRoot({
