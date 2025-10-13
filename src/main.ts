@@ -28,6 +28,6 @@ async function bootstrap() {
     .build();
   const documentation = SwaggerModule.createDocument(app, swagger);
   SwaggerModule.setup("swagger", app, documentation);
-  await app.listen(3000);
+  await app.listen(80);
 }
 bootstrap();
