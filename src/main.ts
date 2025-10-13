@@ -27,7 +27,7 @@ async function bootstrap() {
     .setTitle('Real time chat app')
     .setDescription('A real time chat app with NestJS and TypeORM/Prisma')
     // List both prod and local servers so Swagger "Try it out" works
-    .addServer('https://<your-railway-subdomain>.up.railway.app')
+    .addServer('mysql-production-ec82a.up.railway.app')
     .addServer('http://localhost:3000')
     .setVersion('1.0')
     .addBearerAuth()
