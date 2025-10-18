@@ -107,31 +107,27 @@ export class NotificationService {
     }> {
         const { status, type, page = 1, limit = 20, chatRoomId } = dto;
 
-        const queryBuilder = this.notificationRepository
-            .createQueryBuilder('notification')
-            .leftJoinAndSelect('notification.user', 'user')
-            .leftJoinAndSelect('notification.chatRoom', 'chatRoom')
-            .leftJoinAndSelect('notification.message', 'message')
-            .leftJoinAndSelect('message.sender', 'sender')
-            .where('notification.user.id = :userId', { userId });
+        const where: any = {
+            user: { id: userId },
+        };
 
-        if (status) {
-            queryBuilder.andWhere('notification.status = :status', { status });
-        }
+        if (status) where.status = status;
+        if (type) where.type = type;
+        if (chatRoomId) where.chatRoom = { id: chatRoomId };
 
-        if (type) {
-            queryBuilder.andWhere('notification.type = :type', { type });
-        }
-        if (chatRoomId) {
-            queryBuilder.andWhere('notification.chatRoom.id = :chatRoomId', { chatRoomId });
-        }
-
-        queryBuilder
-            .orderBy('notification.createdAt', 'DESC')
-            .skip((page - 1) * limit)
-            .take(limit);
-
-        const [notifications, total] = await queryBuilder.getManyAndCount();
+        const [notifications, total] = await this.notificationRepository.findAndCount({
+            where,
+            relations: {
+                user: true,
+                chatRoom: true,
+                message: { sender: true },
+            },
+            order: {
+                createdAt: 'DESC',
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
 
         return {
             notifications,
@@ -140,6 +136,7 @@ export class NotificationService {
             limit,
         };
     }
+
 
 
     async markNotificationAsRead(
@@ -166,23 +163,24 @@ export class NotificationService {
         userId: number,
         dto: MarkAllNotificationsReadDto,
     ): Promise<void> {
-        const queryBuilder = this.notificationRepository
-            .createQueryBuilder()
-            .update()
-            .set({ status: NotificationStatus.READ })
-            .where('user.id = :userId', { userId })
-            .andWhere('status = :status', { status: NotificationStatus.UNREAD });
+        const conditions: any = {
+            user: { id: userId },
+            status: NotificationStatus.UNREAD,
+        };
 
         if (dto.type) {
-            queryBuilder.andWhere('type = :type', { type: dto.type });
+            conditions.type = dto.type;
         }
 
         if (dto.chatRoomId) {
-            queryBuilder.andWhere('chatRoom.id = :chatRoomId', { chatRoomId: dto.chatRoomId });
+            conditions.chatRoom = { id: dto.chatRoomId };
         }
 
-        await queryBuilder.execute();
+        await this.notificationRepository.update(conditions, {
+            status: NotificationStatus.READ,
+        });
     }
+
 
     async deleteNotification(
         userId: number,

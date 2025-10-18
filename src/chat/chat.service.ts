@@ -304,12 +304,9 @@ export class ChatService {
       throw new ForbiddenException('Group creator cannot exit the group');
     }
 
-    // Remove from members
     group.members = group.members.filter((m) => m.id !== userId);
-    // Remove from admins if present
     group.admins = group.admins?.filter((a) => a.id !== userId) || [];
 
-    // Ensure there is at least one admin; if none, promote first remaining member
     if (
       group.members.length > 0 &&
       (!group.admins || group.admins.length === 0)
