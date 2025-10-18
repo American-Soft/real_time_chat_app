@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,7 +22,9 @@ import { AddGroupMemberDto } from './dtos/add-group-member.dto';
 import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
 import { ExitGroupDto } from './dtos/exit-group.dto';
 import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
-import { UpdateGroupDto } from './dtos/update-group-dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from 'src/notification/enums/notification-type';
+import { UpdateGroupDto } from './dtos/update-group.dto';
 
 @Injectable()
 export class ChatService {
@@ -35,6 +39,8 @@ export class ChatService {
     private friendshipRepository: Repository<Friendship>,
     @InjectRepository(Group)
     private groupRepository: Repository<Group>,
+    @Inject(forwardRef(() => NotificationService))
+    private notificationService: NotificationService,
   ) { }
 
   // Check if two users are friends
@@ -476,23 +482,18 @@ export class ChatService {
     });
 
     const savedMessage = await this.messageRepository.save(message);
-
-    // Return message with sender details
-    return this.messageRepository.findOne({
+    const fullMessage = await this.messageRepository.findOne({
       where: { id: savedMessage.id },
-      relations: ['sender', 'chatRoom'],
+      relations: ['sender', 'chatRoom', 'chatRoom.group'],
     });
-  }
 
-  // ---- Mute notifications ----
-  private computeMuteUntil(duration: '8h' | '24h' | '1w' | 'off'): Date | null {
-    if (duration === 'off') return null;
-    const now = new Date();
-    const muteUntil = new Date(now);
-    if (duration === '8h') muteUntil.setHours(muteUntil.getHours() + 8);
-    if (duration === '24h') muteUntil.setDate(muteUntil.getDate() + 1);
-    if (duration === '1w') muteUntil.setDate(muteUntil.getDate() + 7);
-    return muteUntil;
+    await this.notificationService.sendMessageNotification(
+      fullMessage,
+      chatRoom,
+      fullMessage.sender,
+    );
+
+    return fullMessage;
   }
 
   // Get messages between two users
@@ -574,6 +575,11 @@ export class ChatService {
       .andWhere("senderId = :senderId", { senderId: senderIdOrGroupId })
       .execute();
 
+    await this.notificationService.markAllNotificationsAsRead(userId, {
+      chatRoomId: chatRoom.id,
+      type: NotificationType.MESSAGE,
+    });
+
   }
 
   // Get unread message count
@@ -626,4 +632,5 @@ export class ChatService {
       order: { updatedAt: 'DESC' },
     });
   }
+
 }

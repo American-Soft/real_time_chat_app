@@ -183,26 +183,26 @@ export class FriendshipController {
   }
 
   @ApiOperation({ summary: 'Get mutual friends with another user' })
-@ApiBody({ type: MutualFriendsDto })
-@ApiResponse({
-  status: 200,
-  description: 'Mutual friends retrieved successfully',
-  schema: {
-    example: [
-      { id: 3, username: 'sarah', email: 'sarah@example.com' },
-      { id: 5, username: 'mark', email: 'mark@example.com' },
-    ],
-  },
-})
-@ApiResponse({ status: 404, description: 'No mutual friends found' })
-@ApiResponse({ status: 401, description: 'Unauthorized' })
-@Post('mutual')
-async mutualFriends(
-  @CurrentUser() user: any,
-  @Body() dto: MutualFriendsDto,
-) {
-  return this.friendshipService.getMutualFriends(user.id, dto.otherUserIds);
-}
+  @ApiBody({ type: MutualFriendsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Mutual friends retrieved successfully',
+    schema: {
+      example: [
+        { id: 3, username: 'sarah', email: 'sarah@example.com' },
+        { id: 5, username: 'mark', email: 'mark@example.com' },
+      ],
+    },
+  })
+  @ApiResponse({ status: 404, description: 'No mutual friends found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('mutual')
+  async mutualFriends(
+    @CurrentUser() user: any,
+    @Body() dto: MutualFriendsDto,
+  ) {
+    return this.friendshipService.getMutualFriends(user.id, dto.otherUserIds);
+  }
 
   @ApiOperation({ summary: 'Unfriend a user' })
   @ApiBody({ type: UnfriendDto })
