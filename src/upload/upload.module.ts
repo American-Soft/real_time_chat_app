@@ -21,20 +21,20 @@ function ensureDirectory(path: string) {
           const isProfile = file.fieldname === 'profile-image';
           const isGroupImage = file.fieldname === 'group-image';
           let destinationPath = './uploads/chat';
-          
+
           if (isProfile) {
             destinationPath = './profile-images';
           } else if (isGroupImage) {
             destinationPath = './uploads/groups';
           }
-          
+
           ensureDirectory(destinationPath);
           cb(null, destinationPath);
         },
         filename: (req, file, cb) => {
           const isProfile = file.fieldname === 'profile-image';
           const isGroupImage = file.fieldname === 'group-image';
-          
+
           if (isProfile) {
             const prefix = `${Date.now()}-${Math.round(Math.random() * 1000000)}`;
             const filename = `${prefix}-${file.originalname}`;
@@ -53,7 +53,7 @@ function ensureDirectory(path: string) {
       fileFilter: (req, file, cb) => {
         const isProfile = file.fieldname === 'profile-image';
         const isGroupImage = file.fieldname === 'group-image';
-        
+
         if (isProfile || isGroupImage) {
           if (file.mimetype.startsWith('image')) {
             cb(null, true);
@@ -70,6 +70,6 @@ function ensureDirectory(path: string) {
   providers: [FileUploadService],
   exports: [MulterModule, FileUploadService],
 })
-export class UploadModule {}
+export class UploadModule { }
 
 
