@@ -29,7 +29,7 @@ import {
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
-@Controller('notifications')
+@Controller('v1/notifications   ')
 @UseGuards(AuthGuard)
 export class NotificationController {
     constructor(private readonly notificationService: NotificationService) { }

@@ -35,9 +35,9 @@ import { ExitGroupDto } from './dtos/exit-group.dto';
 import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
 import { UpdateGroupDto } from './dtos/update-group.dto';
 import { ApiParam } from '@nestjs/swagger';
-@ApiTags('chat')
+@ApiTags('Chats')
 @ApiBearerAuth()
-@Controller('chat')
+@Controller('v1/chats')
 @UseGuards(AuthGuard)
 export class ChatController {
   constructor(
@@ -46,7 +46,7 @@ export class ChatController {
   ) { }
 
 
-  @Post('group')
+  @Post('groups')
   @UseInterceptors(FileInterceptor('group-image'))
   @ApiOperation({ summary: 'Create a new group chat' })
 
@@ -90,7 +90,7 @@ export class ChatController {
   }
 
 
-  @Patch('group/:groupId/update')
+  @Patch('groups/:groupId')
   @UseInterceptors(FileInterceptor('group-image'))
   @ApiOperation({ summary: 'Update group information (name, description, image)' })
   @ApiParam({ name: 'groupId', description: 'Group ID to update' })
@@ -134,7 +134,7 @@ export class ChatController {
     return this.chatService.updateGroup(user.id, groupId, updateGroupDto);
   }
 
-  @Post('group/add-member')
+  @Post('groups/:groupId/members')
   @ApiOperation({ summary: 'Add a member to a group chat' })
   @ApiBody({ type: AddGroupMemberDto })
   @ApiResponse({
@@ -166,7 +166,7 @@ export class ChatController {
     return this.chatService.addMemberToGroup(user.id, addGroupMemberDto);
   }
 
-  @Post('group/add-admin')
+  @Post('groups/:groupId/admins')
   @ApiOperation({ summary: 'Add an admin to a group chat' })
   @ApiBody({ type: AddGroupAdminDto })
   @ApiResponse({
@@ -195,7 +195,7 @@ export class ChatController {
     status: 403,
     description: 'Forbidden - Only admins can add other admins',
   })
-  @Post('group/add-admin')
+  @Post('groups/:groupId/admins')
   async addGroupAdmin(
     @CurrentUser() user: User,
     @Body() addGroupAdminDto: AddGroupAdminDto,
@@ -203,7 +203,7 @@ export class ChatController {
     return this.chatService.addGroupAdmin(user.id, addGroupAdminDto);
   }
 
-  @Post('group/exit')
+  @Post('groups/:groupId/exit')
   @ApiOperation({ summary: 'Exit a group chat' })
   @ApiBody({ type: ExitGroupDto })
   @ApiResponse({ status: 200, description: 'Exited the group successfully' })
@@ -214,7 +214,7 @@ export class ChatController {
     return this.chatService.exitGroup(user.id, dto);
   }
 
-  @Post('group/remove-admin')
+  @Post('groups/:groupId/remove-admin')
   @ApiOperation({
     summary: 'Remove an admin from a group (creator cannot be removed)',
   })
@@ -264,7 +264,7 @@ export class ChatController {
   }
 
 
-  @Post('send-message')
+  @Post('messages')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Send a message (text or file)' })
   @ApiBody({ type: SendMessageDto })
@@ -292,24 +292,16 @@ export class ChatController {
   async sendMessage(
     @CurrentUser() user: User,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: {
-      receiverId?: number; // For one-on-one chats
-      groupId?: number; // For group chats
-      content?: string;
-    },
+    @Body() body: SendMessageDto,
   ) {
-    const sendMessageDto: SendMessageDto = {
-      receiverId: body.receiverId ? Number(body.receiverId) : undefined,
-      groupId: body.groupId ? Number(body.groupId) : undefined,
-      content: body.content,
-      type: MessageType.TEXT,
-    };
+    const dto: SendMessageDto = { ...body, type: MessageType.TEXT };
+
 
     if (file) {
       const fileUrl = this.fileUploadService.getFileUrl(file.filename);
       const messageType = this.fileUploadService.getMessageTypeFromMimeType(file.mimetype);
 
-      Object.assign(sendMessageDto, {
+      Object.assign(dto, {
         type: messageType,
         fileUrl,
         fileName: file.originalname,
@@ -318,7 +310,7 @@ export class ChatController {
       });
     }
 
-    return this.chatService.sendMessage(user.id, sendMessageDto);
+    return this.chatService.sendMessage(user.id, dto);
   }
 
 
@@ -403,7 +395,7 @@ export class ChatController {
     return this.chatService.getUserChatRooms(user.id);
   }
 
-  @Post('mark-read/:senderId')
+  @Post('messages/:senderId/read')
   @ApiOperation({ summary: 'Mark all messages as read from a user or group' })
   @ApiResponse({
     status: 200,
@@ -419,15 +411,15 @@ export class ChatController {
     return { success: true };
   }
 
-  @Get('unread-count')
+  @Get('messages/unread-count')
   @ApiOperation({ summary: 'Get total unread messages count for the user' })
   @ApiResponse({
     status: 200,
     description: 'Unread message counts fetched successfully',
     schema: {
       example: {
-        2: 5, // user ID 2 -> 5 unread messages
-        group_1: 3, // group ID 1 -> 3 unread messages
+        2: 5,
+        group_1: 3,
       },
     },
   })
@@ -437,15 +429,15 @@ export class ChatController {
     return this.chatService.getUnreadCount(user.id);
   }
 
-  @Get('can-chat/:userId')
+  @Get('users/:userId/can-chat')
   @ApiOperation({ summary: 'Get count of unread messages for all chats' })
   @ApiResponse({
     status: 200,
     description: 'Unread message counts fetched successfully',
     schema: {
       example: {
-        2: 5, // user ID 2 -> 5 unread messages
-        group_1: 3, // group ID 1 -> 3 unread messages
+        2: 5,
+        group_1: 3,
       },
     },
   })

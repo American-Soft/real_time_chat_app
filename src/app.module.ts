@@ -10,6 +10,8 @@ import { ChatModule } from './chat/chat.module';
 import { UploadModule } from './upload/upload.module';
 import { CallModule } from './call/call.module';
 import { AuthModule } from './auth/auth.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 @Module({
   imports: [UserModule,
     MailModule,
@@ -18,26 +20,37 @@ import { AuthModule } from './auth/auth.module';
     UploadModule,
     CallModule,
     AuthModule,
-    TypeOrmModule.forRootAsync({
-    inject: [ConfigService],
-    useFactory: async (configService: ConfigService) => ({
-      type: 'mysql',
-      host: configService.get<string>("DB_HOST"),
-      port: configService.get<number>('DB_PORT'),
-      username: configService.get<string>('DB_USERNAME'),
-      password: configService.get<string>('DB_PASSWORD'),
-      database: configService.get<string>('DB_DATABASE'),
-      autoLoadEntities: true,
-      synchronize: true,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
     }),
-  
-  }),
-  ConfigModule.forRoot({
-    isGlobal: true,
-    envFilePath: '.env',
-  }),
-],
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>("DB_HOST"),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        autoLoadEntities: true,
+        synchronize: true,
+      }),
+
+    }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, {
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard,
+  },],
 })
-export class AppModule {}
+export class AppModule { }

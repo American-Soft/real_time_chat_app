@@ -7,12 +7,12 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { RtcRole } from 'agora-token';
 import { RtcTokenQueryDto } from './dtos/rtc-token.dto';
 
-@ApiTags('call')
+@ApiTags('Calls')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@Controller('call')
+@Controller('v1/calls')
 export class CallController {
-  constructor(private readonly agoraService: AgoraService) {}
+  constructor(private readonly agoraService: AgoraService) { }
 
   @Get('rtc-token')
   @ApiOperation({ summary: 'Get Agora RTC token for a call' })
@@ -25,7 +25,7 @@ export class CallController {
     @CurrentUser() user: User,
     @Query() query: RtcTokenQueryDto,
   ) {
-     const rtcRole = query.role === 'subscriber' ? RtcRole.SUBSCRIBER : RtcRole.PUBLISHER;
+    const rtcRole = query.role === 'subscriber' ? RtcRole.SUBSCRIBER : RtcRole.PUBLISHER;
     const expireSeconds = query.expire ?? 3600;
 
     return this.agoraService.generateRtcToken(query.channel, user.id, rtcRole, expireSeconds);

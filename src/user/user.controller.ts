@@ -20,14 +20,14 @@ import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageUploadDto } from './dtos/image-upload.dto';
 import { Response } from 'express';
-@ApiTags('user')
+@ApiTags('Users')
 @ApiBearerAuth()
-@Controller('user')
+@Controller('v1/users')
 export class UserController {
   constructor(private readonly usersService: UserService) {
   }
 
-  @Post("auth/register")
+  @Post("register")
   @ApiOperation({ summary: 'Register a new user' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
@@ -47,7 +47,7 @@ export class UserController {
   }
 
 
-  @Post("auth/login")
+  @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login a user' })
   @ApiBody({ type: LoginDto })
@@ -83,7 +83,7 @@ export class UserController {
     return this.usersService.login(body);
   }
 
-  @Get("auth/current-user")
+  @Get("me")
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current authenticated user' })
@@ -93,7 +93,7 @@ export class UserController {
     return this.usersService.getCurrentUser(payload.id);
   }
 
-  @Put()
+  @Put('me')
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user' })
@@ -134,7 +134,7 @@ export class UserController {
     return this.usersService.update(payload.id, body);
   }
 
-  @Get("verify-email/:id/:verificationToken")
+  @Get(":id/verify-email/:verificationToken")
   public verifyEmail(
     @Param('id', ParseIntPipe) id: number,
     @Param('verificationToken') verificationToken: string
@@ -148,7 +148,7 @@ export class UserController {
     return this.usersService.sendResetPassword(body.email);
   }
 
-  @Get("reset-password/:id/:resetPasswordToken")
+  @Get(":id/reset-password/:token")
   public getResetPassword(
     @Param("id", ParseIntPipe) id: number,
     @Param("resetPasswordToken") resetPasswordToken: string
@@ -162,7 +162,7 @@ export class UserController {
   }
 
 
-  @Post('upload-profile-image')
+  @Post('me/profile-image')
   @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('profile-image'))
   @ApiSecurity('bearer')
@@ -175,17 +175,17 @@ export class UserController {
     return this.usersService.setProfileImage(payload.id, file.filename);
   }
 
-  @Delete("images/remove-profile-image")
+  @Delete("me/profile-image")
   @UseGuards(AuthGuard)
   @ApiSecurity('bearer')
   public removeProfileImage(@CurrentUser() payload: JWTPayloadType) {
     return this.usersService.removeProfileImage(payload.id);
   }
 
-  @Get("images/:profile_image")
+  @Get("profile-images/:filename")
   @UseGuards(AuthGuard)
   @ApiSecurity('bearer')
-  public showProfileImage(@Param('profile_image') profile_image: string, @Res() res: Response) {
+  public showProfileImage(@Param('filename') profile_image: string, @Res() res: Response) {
     return res.sendFile(profile_image, { root: 'profile-images' })
   }
 

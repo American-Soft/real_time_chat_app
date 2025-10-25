@@ -17,14 +17,14 @@ import { UnfriendDto } from './dtos/unfriend.dto';
 import { BlockUserDto } from './dtos/block-user.dto';
 import { UnblockUserDto } from './dtos/unblock-user.dto';
 
-@ApiTags('Friendship')
+@ApiTags('Friendships')
 @ApiBearerAuth()
-@Controller('friendship')
+@Controller('v1/friendships')
 @UseGuards(AuthGuard)
 export class FriendshipController {
   constructor(private readonly friendshipService: FriendshipService) { }
 
-  @Post('request')
+  @Post('requests')
   @ApiOperation({ summary: 'Send a friend request' })
   @ApiBody({ type: SendFriendRequestDto })
   @ApiResponse({
@@ -60,7 +60,7 @@ export class FriendshipController {
   })
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Post('cancel')
+  @Post('requests/cancel')
   async cancelRequest(
     @CurrentUser() user: any,
     @Body() dto: AcceptDeclineRequestDto,
@@ -85,7 +85,7 @@ export class FriendshipController {
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
 
-  @Post('accept')
+  @Post('requests/accept')
   async acceptRequest(
     @CurrentUser() user: any,
     @Body() dto: AcceptDeclineRequestDto
@@ -112,7 +112,7 @@ export class FriendshipController {
   })
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Post('decline')
+  @Post('requests/decline')
   async declineRequest(
     @CurrentUser() user: any,
     @Body() dto: AcceptDeclineRequestDto
@@ -159,7 +159,7 @@ export class FriendshipController {
   })
   @ApiResponse({ status: 404, description: 'No friends found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Get('friends')
+  @Get('')
   async listFriends(@CurrentUser() user: any) {
     return this.friendshipService.listFriends(user.id);
   }
