@@ -13,7 +13,7 @@ import { NotificationSettings } from './notification-settings.entity';
 import { User } from '../user/user.entity';
 import { ChatRoom } from '../chat/chat-room.entity';
 import { Message } from '../chat/message.entity';
-import { Group } from '../chat/group.entity';
+import { Group } from '../group/group.entity';
 import { MuteNotificationsDto, } from './dtos/mute-notifications.dto';
 import { GetNotificationsDto } from './dtos/get-notifications.dto';
 import { NotificationType } from './enums/notification-type';

@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { MailModule } from './mail/mail.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { ChatModule } from './chat/chat.module';
+import { GroupModule } from './group/group.module';
 import { UploadModule } from './upload/upload.module';
 import { CallModule } from './call/call.module';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +18,7 @@ import { APP_GUARD } from '@nestjs/core';
     MailModule,
     FriendshipModule,
     ChatModule,
+    GroupModule,
     UploadModule,
     CallModule,
     AuthModule,

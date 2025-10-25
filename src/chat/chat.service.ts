@@ -10,21 +10,14 @@ import { Repository } from 'typeorm';
 import { ChatRoom } from './chat-room.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
-import { Friendship } from '../friendship/friendship.entity';
-import { FriendshipStatus } from '../enums/friendship-status.enum';
 import { SendMessageDto } from './dtos/send-message.dto';
 import { GetMessagesDto } from './dtos/get-messages.dto';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateGroupDto } from './dtos/create-group.dto';
-import { Group } from './group.entity';
 import { ChatRoomType } from 'src/enums/chat-room-type';
-import { AddGroupMemberDto } from './dtos/add-group-member.dto';
-import { AddGroupAdminDto } from './dtos/add-group-admin.dto';
-import { ExitGroupDto } from './dtos/exit-group.dto';
-import { RemoveGroupAdminDto } from './dtos/remove-group-admin.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from 'src/notification/enums/notification-type';
-import { UpdateGroupDto } from './dtos/update-group.dto';
+import { GroupService } from '../group/group.service';
+import { FriendshipService } from '../friendship/friendship.service';
 
 @Injectable()
 export class ChatService {
@@ -35,291 +28,13 @@ export class ChatService {
     private messageRepository: Repository<Message>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(Friendship)
-    private friendshipRepository: Repository<Friendship>,
-    @InjectRepository(Group)
-    private groupRepository: Repository<Group>,
     @Inject(forwardRef(() => NotificationService))
     private notificationService: NotificationService,
+    private groupService: GroupService,
+    private friendshipService: FriendshipService,
   ) { }
 
-  // Check if two users are friends
-  async areFriends(userId1: number, userId2: number): Promise<boolean> {
-    const friendship = await this.friendshipRepository.findOne({
-      where: [
-        {
-          requester: { id: userId1 },
-          receiver: { id: userId2 },
-          status: FriendshipStatus.ACCEPTED,
-        },
-        {
-          requester: { id: userId2 },
-          receiver: { id: userId1 },
-          status: FriendshipStatus.ACCEPTED,
-        },
-      ],
-      relations: ['blockedBy'],
-    });
-    if (!friendship) return false;
-    if ((friendship as any).isBlocked) return false;
-    return true;
-  }
 
-  // Check if users are blocked
-  async areBlocked(userId1: number, userId2: number): Promise<boolean> {
-    const friendship = await this.friendshipRepository.findOne({
-      where: [
-        { requester: { id: userId1 }, receiver: { id: userId2 } },
-        { requester: { id: userId2 }, receiver: { id: userId1 } },
-      ],
-      relations: ['blockedBy'],
-    });
-    return !!(friendship && (friendship as any).isBlocked);
-  }
-
-  async createGroup(
-    userID: number,
-    createGropuDto: CreateGroupDto,
-  ): Promise<Group> {
-    const { name, memberIds, description, imageUrl } = createGropuDto;
-    const creator = await this.userRepository.findOne({
-      where: { id: userID },
-    });
-    if (!creator) {
-      throw new NotFoundException('Creator not found');
-    }
-    const members = await this.userRepository.findByIds(memberIds);
-    if (members.length !== memberIds.length) {
-      throw new NotFoundException('Some members not found');
-    }
-    const allowedMembers: User[] = [];
-    for (const member of members) {
-      const areFriends = await this.areFriends(userID, member.id);
-      if (!areFriends) {
-        throw new ForbiddenException(
-          `You can only add friends to the group. ${member.username || 'User ' + member.id} is not your friend.`,
-        );
-      }
-      allowedMembers.push(member);
-    }
-
-    const allMembers = [...allowedMembers];
-    if (!allMembers.some((m) => m.id === creator.id)) {
-      allMembers.push(creator);
-    }
-    const group = this.groupRepository.create({
-      name,
-      description,
-      creator,
-      image: imageUrl,
-      members: allMembers,
-      admins: [creator],
-    });
-    await this.groupRepository.save(group);
-    const chatRoom = this.chatRoomRepository.create({
-      group,
-      roomId: uuidv4(),
-      type: ChatRoomType.GROUP,
-    });
-    await this.chatRoomRepository.save(chatRoom);
-    return this.groupRepository.findOne({
-      where: { id: group.id },
-      relations: ['creator', 'members', 'admins'],
-    });
-  }
-
-
-  async updateGroup(
-    userId: number,
-    groupId: number,
-    updateGroupDto: UpdateGroupDto,
-  ): Promise<Group> {
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['creator', 'members', 'admins'],
-    });
-
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (!group.admins.some((admin) => admin.id === userId)) {
-      throw new ForbiddenException('Only group admins can update the group');
-    }
-
-    if (updateGroupDto.name !== undefined) {
-      group.name = updateGroupDto.name;
-    }
-    if (updateGroupDto.description !== undefined) {
-      group.description = updateGroupDto.description;
-    }
-    if (updateGroupDto.imageUrl !== undefined) {
-      group.image = updateGroupDto.imageUrl;
-    }
-
-    await this.groupRepository.save(group);
-
-    return this.groupRepository.findOne({
-      where: { id: group.id },
-      relations: ['creator', 'members', 'admins'],
-    });
-  }
-  async addMemberToGroup(
-    userId: number,
-    AddGroupMemberDto: AddGroupMemberDto,
-  ): Promise<Group> {
-    const { userId: memberId, groupId } = AddGroupMemberDto;
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['members', 'admins'],
-    });
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-    if (!group.admins.some((admin) => admin.id === userId)) {
-      throw new ForbiddenException('Only group admins can add members');
-    }
-    const member = await this.userRepository.findOne({
-      where: { id: memberId },
-    });
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-    if (group.members.some((member) => member.id === memberId)) {
-      throw new ForbiddenException('User is already a member of the group');
-    }
-    if (!(await this.areFriends(userId, memberId))) {
-      throw new ForbiddenException('You can only add friends to the group');
-    }
-    group.members.push(member);
-    await this.groupRepository.save(group);
-    return group;
-  }
-
-  async addGroupAdmin(
-    userId: number,
-    addGroupAdminDto: AddGroupAdminDto,
-  ): Promise<Group> {
-    const { userId: adminId, groupId } = addGroupAdminDto;
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['admins'],
-    });
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-    if (!group.admins.some((admin) => admin.id === userId)) {
-      throw new ForbiddenException('Only group admins can add other admins');
-    }
-    const admin = await this.userRepository.findOne({ where: { id: adminId } });
-    if (!admin) {
-      throw new NotFoundException('Admin not found');
-    }
-    if (!group.members.some((member) => member.id === adminId)) {
-      throw new ForbiddenException(
-        'User must be a group member to become an admin',
-      );
-    }
-    if (group.admins.some((admin) => admin.id === adminId)) {
-      throw new ForbiddenException('User is already an admin of the group');
-    }
-    group.admins.push(admin);
-    await this.groupRepository.save(group);
-    return group;
-  }
-
-  async removeGroupAdmin(
-    userId: number,
-    dto: RemoveGroupAdminDto,
-  ): Promise<Group> {
-    const { groupId, userId: targetAdminId } = dto;
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['creator', 'members', 'admins'],
-    });
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-    // Only existing admins can remove another admin
-    if (!group.admins.some((admin) => admin.id === userId)) {
-      throw new ForbiddenException('Only group admins can remove admins');
-    }
-
-    // Creator cannot be removed by anyone
-    if (group.creator?.id === targetAdminId) {
-      throw new ForbiddenException('Cannot remove the group creator as admin');
-    }
-
-    // Target must be an admin
-    if (!group.admins.some((admin) => admin.id === targetAdminId)) {
-      throw new NotFoundException('Target user is not an admin');
-    }
-
-    // Remove target from admins
-    group.admins = group.admins.filter((a) => a.id !== targetAdminId);
-
-    // Ensure at least one admin remains; if none, promote creator or first member
-    if (!group.admins || group.admins.length === 0) {
-      if (group.creator) {
-        group.admins = [group.creator];
-      } else if (group.members && group.members.length > 0) {
-        group.admins = [group.members[0]];
-      }
-    }
-
-    await this.groupRepository.save(group);
-    return this.groupRepository.findOne({
-      where: { id: group.id },
-      relations: ['creator', 'members', 'admins'],
-    });
-  }
-
-  async getUserGroups(userId: number): Promise<Group[]> {
-    return this.groupRepository.find({
-      where: [
-        { members: { id: userId } },
-        { admins: { id: userId } },
-      ],
-      relations: ['creator', 'members', 'admins'],
-      order: { updatedAt: 'DESC' },
-    });
-  }
-
-  async exitGroup(userId: number, dto: ExitGroupDto): Promise<Group> {
-    const group = await this.groupRepository.findOne({
-      where: { id: dto.groupId },
-      relations: ['creator', 'members', 'admins'],
-    });
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-
-    const isMember = group.members.some((m) => m.id === userId);
-    if (!isMember) {
-      throw new ForbiddenException('You are not a member of this group');
-    }
-
-    // Prevent creator from exiting to avoid orphaned group
-    if (group.creator?.id === userId) {
-      throw new ForbiddenException('Group creator cannot exit the group');
-    }
-
-    group.members = group.members.filter((m) => m.id !== userId);
-    group.admins = group.admins?.filter((a) => a.id !== userId) || [];
-
-    if (
-      group.members.length > 0 &&
-      (!group.admins || group.admins.length === 0)
-    ) {
-      group.admins = [group.members[0]];
-    }
-
-    await this.groupRepository.save(group);
-    return this.groupRepository.findOne({
-      where: { id: group.id },
-      relations: ['creator', 'members', 'admins'],
-    });
-  }
 
   // Get or create chat room between two users
   async getOrCreateChatRoom(
@@ -328,11 +43,7 @@ export class ChatService {
     isGroup = false,
   ): Promise<ChatRoom> {
     if (isGroup) {
-      const group = await this.groupRepository.findOne({
-        where: { id: userId2OrGroupId },
-        relations: ['members'],
-      });
-      if (!group) throw new NotFoundException('Group not found');
+      const group = await this.groupService.getGroupById(userId2OrGroupId);
 
       // Check if user is a member
       if (!group.members.some((member) => member.id === userId1)) {
@@ -356,7 +67,7 @@ export class ChatService {
     }
 
     // Existing logic for one-on-one chats
-    const areFriends = await this.areFriends(userId1, userId2OrGroupId);
+    const areFriends = await this.friendshipService.areFriends(userId1, userId2OrGroupId);
     if (!areFriends)
       throw new ForbiddenException('You can only chat with your friends');
 
@@ -385,7 +96,7 @@ export class ChatService {
 
       if (!user1 || !user2) throw new NotFoundException('User not found');
 
-      const isBlocked = await this.areBlocked(userId1, userId2OrGroupId);
+      const isBlocked = await this.friendshipService.areBlocked(userId1, userId2OrGroupId);
       if (isBlocked) {
         throw new ForbiddenException(
           'Messaging is blocked between these users',
@@ -409,11 +120,7 @@ export class ChatService {
     isGroup: boolean,
   ): Promise<number[]> {
     if (isGroup) {
-      const group = await this.groupRepository.findOne({
-        where: { id: targetId },
-        relations: ['members'],
-      });
-      if (!group) throw new NotFoundException('Group not found');
+      const group = await this.groupService.getGroupById(targetId);
 
       // Check if user is a member
       if (!group.members.some((member) => member.id === userId)) {
@@ -421,7 +128,7 @@ export class ChatService {
       }
       return group.members.map((member) => member.id);
     }
-    const canChat = await this.areFriends(userId, targetId);
+    const canChat = await this.friendshipService.areFriends(userId, targetId);
     if (!canChat)
       throw new ForbiddenException('You can only chat with your friends');
 
@@ -455,7 +162,7 @@ export class ChatService {
       chatRoom = await this.getOrCreateChatRoom(senderId, groupId, true);
     } else if (receiverId) {
       // Block check before creating room and saving message
-      const isBlocked = await this.areBlocked(senderId, receiverId);
+      const isBlocked = await this.friendshipService.areBlocked(senderId, receiverId);
       if (isBlocked) {
         throw new ForbiddenException(
           'Messaging is blocked between these users',
@@ -543,9 +250,14 @@ export class ChatService {
     senderIdOrGroupId: number,
   ): Promise<void> {
     let chatRoom: ChatRoom;
-    const isGroup = await this.groupRepository.findOne({
-      where: { id: senderIdOrGroupId },
-    });
+    let isGroup = false;
+    try {
+      await this.groupService.getGroupById(senderIdOrGroupId);
+      isGroup = true;
+    } catch (error) {
+      // Not a group, treat as user ID
+    }
+
     if (isGroup) {
       chatRoom = await this.getOrCreateChatRoom(
         userId,
@@ -554,7 +266,7 @@ export class ChatService {
       );
     } else {
       // Block check for 1:1 chats
-      const isBlocked = await this.areBlocked(userId, senderIdOrGroupId);
+      const isBlocked = await this.friendshipService.areBlocked(userId, senderIdOrGroupId);
       if (isBlocked) {
         throw new ForbiddenException(
           'Messaging is blocked between these users',

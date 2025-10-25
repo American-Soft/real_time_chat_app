@@ -16,3 +16,4 @@ export class AddGroupAdminDto {
   @IsNumber()
   userId: number;
 }
+

@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../user/user.entity';
 import { Message } from './message.entity';
-import { Group } from './group.entity';
+import { Group } from '../group/group.entity';
 import { ChatRoomType } from 'src/enums/chat-room-type';
 
 @Entity('chat_rooms')

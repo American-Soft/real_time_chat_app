@@ -11,16 +11,3 @@ export class RemoveGroupAdminDto {
   userId: number;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-

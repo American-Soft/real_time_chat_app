@@ -4,7 +4,7 @@ import { Notification } from './notification.entity';
 import { NotificationSettings } from './notification-settings.entity';
 import { User } from '../user/user.entity';
 import { ChatRoom } from '../chat/chat-room.entity';
-import { Group } from '../chat/group.entity';
+import { Group } from '../group/group.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ChatModule } from '../chat/chat.module';
 import { NotificationService } from './notification.service';
