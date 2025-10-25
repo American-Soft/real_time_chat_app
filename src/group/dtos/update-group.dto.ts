@@ -28,3 +28,4 @@ export class UpdateGroupDto {
   @IsOptional()
   imageUrl?: string;
 }
+

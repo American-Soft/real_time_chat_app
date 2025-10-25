@@ -232,6 +232,40 @@ export class FriendshipService {
     if (!friendship) return { blocked: false };
     return { blocked: !!friendship.isBlocked, blockedById: friendship.blockedBy?.id };
   }
+
+  // Check if two users are friends
+  async areFriends(userId1: number, userId2: number): Promise<boolean> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        {
+          requester: { id: userId1 },
+          receiver: { id: userId2 },
+          status: FriendshipStatus.ACCEPTED,
+        },
+        {
+          requester: { id: userId2 },
+          receiver: { id: userId1 },
+          status: FriendshipStatus.ACCEPTED,
+        },
+      ],
+      relations: ['blockedBy'],
+    });
+    if (!friendship) return false;
+    if ((friendship as any).isBlocked) return false;
+    return true;
+  }
+
+  // Check if users are blocked
+  async areBlocked(userId1: number, userId2: number): Promise<boolean> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { requester: { id: userId1 }, receiver: { id: userId2 } },
+        { requester: { id: userId2 }, receiver: { id: userId1 } },
+      ],
+      relations: ['blockedBy'],
+    });
+    return !!(friendship && (friendship as any).isBlocked);
+  }
 async getMutualFriends(userId: number, otherUserIds: number[]) {
   if (!otherUserIds || otherUserIds.length === 0) {
     return [];

@@ -7,5 +7,3 @@ export class ExitGroupDto {
   groupId: number;
 }
 
-
-

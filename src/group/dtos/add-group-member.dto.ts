@@ -16,3 +16,4 @@ export class AddGroupMemberDto {
   @IsNumber()
   groupId: number;
 }
+

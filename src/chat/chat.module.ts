@@ -6,19 +6,20 @@ import { FileUploadService } from '../upload/file-upload.service';
 import { ChatRoom } from './chat-room.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
-import { Friendship } from '../friendship/friendship.entity';
 import { ChatGateway } from './chat.gateway';
-import { Group } from './group.entity';
-import { AgoraService } from 'src/call/agora.service';
 import { NotificationModule } from 'src/notification/notification.module';
 import { CallModule } from 'src/call/call.module';
+import { GroupModule } from '../group/group.module';
+import { FriendshipModule } from '../friendship/friendship.module';
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatRoom, Message, User, Friendship, Group]),
+    TypeOrmModule.forFeature([ChatRoom, Message, User]),
     forwardRef(() => NotificationModule),
-    CallModule
+    CallModule,
+    GroupModule,
+    FriendshipModule
   ],
   controllers: [ChatController],
   providers: [ChatService, FileUploadService, ChatGateway],
