@@ -10,6 +10,8 @@ import { ChatModule } from './chat/chat.module';
 import { UploadModule } from './upload/upload.module';
 import { CallModule } from './call/call.module';
 import { AuthModule } from './auth/auth.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 @Module({
   imports: [UserModule,
     MailModule,
@@ -18,6 +20,14 @@ import { AuthModule } from './auth/auth.module';
     UploadModule,
     CallModule,
     AuthModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 3,
+        },
+      ],
+    }),
     TypeOrmModule.forRootAsync({
     inject: [ConfigService],
     useFactory: async (configService: ConfigService) => {
@@ -87,6 +97,9 @@ import { AuthModule } from './auth/auth.module';
   }),
 ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, {
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard,
+  },],
 })
-export class AppModule {}
+export class AppModule { }

@@ -403,10 +403,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       if (!client.user) return { error: 'Unauthorized' };
-      console.log('Accepting call with data:', parsed);
       const isGroup = !!parsed.groupId;
       const targetId = parsed.groupId ?? parsed.receiverId;
-      console.log('Parsed targetId:', targetId, 'isGroup:', isGroup);
       if (!targetId || !parsed.channel) return { error: 'Invalid payload' };
 
       // ✅ Generate Agora token for the callee

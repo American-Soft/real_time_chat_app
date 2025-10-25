@@ -68,7 +68,6 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
             // Join a per-user private room for notifications
             client.join(this.userNotificationRoom(user.id));
 
-            console.log(`User ${user.id} connected to notification gateway`);
 
         } catch (error) {
             console.error('Notification gateway connection error:', error);
@@ -81,7 +80,6 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
         if (!client.user) return;
 
         this.removeSocketForUser(client.user.id, client.id);
-        console.log(`User ${client.user.id} disconnected from notification gateway`);
     }
 
     // Get user notifications
