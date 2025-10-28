@@ -20,14 +20,13 @@ import { NotificationStatus } from './enums/notification-status';
 export class Notification {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   user: User;
 
-  @ManyToOne(() => ChatRoom, { nullable: true })
+  @ManyToOne(() => ChatRoom, { nullable: true, onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   chatRoom: ChatRoom;
 
-  @ManyToOne(() => Message, { nullable: true })
+  @ManyToOne(() => Message, { nullable: true, onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   message: Message;
 
   @Column({

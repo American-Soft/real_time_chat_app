@@ -23,9 +23,9 @@ import { UpdateNotificationSettingsDto } from './dtos/update-notification-settin
 import { MarkAllNotificationsReadDto } from './dtos/mark-all-notifications-read.dto';
 import { MarkNotificationReadDto } from './dtos/mark-notification-read.dto';
 import { DeleteNotificationDto } from './dtos/delete-notification.dto';
-import { ChatRoomType } from 'src/enums/chat-room-type';
 import { ChatService } from 'src/chat/chat.service';
 import { NotificationGateway } from './notification.gateway';
+import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class NotificationService {
@@ -96,6 +96,12 @@ export class NotificationService {
     }
 
 
+    @OnEvent('message.sent', { async: true })
+    async handleMessageSentEvent(payload: { message: Message; chatRoom: ChatRoom }) {
+        const { message, chatRoom } = payload;
+        const sender = message.sender;
+        await this.sendMessageNotification(message, chatRoom, sender);
+    }
     async getUserNotifications(
         userId: number,
         dto: GetNotificationsDto,
@@ -181,6 +187,15 @@ export class NotificationService {
         });
     }
 
+    @OnEvent('messages.read', { async: true })
+    async handleMessagesReadEvent(payload: { userId: number; chatRoomId: number }) {
+        const { userId, chatRoomId } = payload;
+
+        await this.markAllNotificationsAsRead(userId, {
+            chatRoomId,
+            type: NotificationType.MESSAGE,
+        });
+    }
 
     async deleteNotification(
         userId: number,

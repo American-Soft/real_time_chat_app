@@ -17,13 +17,13 @@ export class ChatRoom {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   user1: User;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   user2: User;
 
-  @ManyToOne(() => Group, { eager: true, nullable: true })
+  @ManyToOne(() => Group, { eager: true, nullable: true, onDelete: 'SET NULL' })
   group: Group;
 
   @Column({
@@ -36,7 +36,7 @@ export class ChatRoom {
   @Column({ unique: true })
   roomId: string; // Unique identifier for the room
 
-  @OneToMany(() => Message, message => message.chatRoom)
+  @OneToMany(() => Message, message => message.chatRoom, { cascade: true })
   messages: Message[];
 
   @CreateDateColumn()

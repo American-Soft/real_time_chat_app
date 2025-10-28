@@ -50,7 +50,7 @@ export class UserService {
  * @returns updated user from the database
  */
   public async update(id: number, updateUserDto: UpdateUserDto) {
-    const { password, username ,firstName,lastName} = updateUserDto;
+    const { password, username, firstName, lastName } = updateUserDto;
     const user = await this.userRepository.findOne({ where: { id } });
 
     user.username = username ?? user.username;
@@ -159,5 +159,31 @@ export class UserService {
 
     user.profileImage = null;
     return this.userRepository.save(user);
+  }
+
+  /**
+ * Delete current user account
+ * @param userId id of the logged in user
+ * @returns success message
+ */
+  public async deleteAccount(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.profileImage) {
+      try {
+        const imagePath = join(process.cwd(), `profile-images/${user.profileImage}`);
+        unlinkSync(imagePath);
+      } catch (err) {
+        console.warn(`Failed to delete profile image: ${err.message}`);
+      }
+    }
+
+    await this.userRepository.remove(user);
+
+    return {
+      success: true,
+      message: 'Your account has been deleted successfully',
+    };
   }
 }
