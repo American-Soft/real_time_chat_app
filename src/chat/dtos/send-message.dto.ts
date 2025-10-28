@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
 import { MessageType } from '../../enums/message-type.enum';
+import { Type } from 'class-transformer';
 
 export class SendMessageDto {
   @ApiProperty({
@@ -8,6 +9,7 @@ export class SendMessageDto {
     description: 'Receiver user ID',
   })
   @IsNumber()
+  @Type(() => Number)
   receiverId: number;
 
   @ApiProperty({
