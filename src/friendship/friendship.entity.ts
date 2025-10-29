@@ -15,10 +15,10 @@ export class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, user => user.sentRequests, { eager: true })
+  @ManyToOne(() => User, user => user.sentRequests, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   requester: User;
 
-  @ManyToOne(() => User, user => user.receivedRequests, { eager: true })
+  @ManyToOne(() => User, user => user.receivedRequests, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   receiver: User;
 
   @Column({
@@ -31,7 +31,7 @@ export class Friendship {
   @Column({ type: 'boolean', default: false })
   isBlocked: boolean;
 
-  @ManyToOne(() => User, { eager: true, nullable: true })
+  @ManyToOne(() => User, { eager: true, nullable: true, onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   blockedBy?: User;
 
   @CreateDateColumn()

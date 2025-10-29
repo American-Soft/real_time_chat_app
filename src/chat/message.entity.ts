@@ -1,4 +1,4 @@
-  import {
+import {
   Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
@@ -15,10 +15,10 @@ export class Message {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   sender: User;
 
-  @ManyToOne(() => ChatRoom, chatRoom => chatRoom.messages)
+  @ManyToOne(() => ChatRoom, chatRoom => chatRoom.messages, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   chatRoom: ChatRoom;
 
   @Column({

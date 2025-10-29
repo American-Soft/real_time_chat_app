@@ -15,14 +15,14 @@ export class Group {
     @Column({ nullable: true })
     image: string;
 
-    @ManyToOne(() => User, { eager: true })
+    @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
     creator: User;
 
-    @ManyToMany(() => User, { eager: true })
+    @ManyToMany(() => User, { eager: true, onDelete: 'CASCADE' })
     @JoinTable()
     members: User[];
 
-    @ManyToMany(() => User, { eager: true })  // groups can have many admins
+    @ManyToMany(() => User, { eager: true, onDelete: 'CASCADE' })
     @JoinTable()
     admins: User[];
 

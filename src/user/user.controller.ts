@@ -182,6 +182,35 @@ export class UserController {
     return this.usersService.removeProfileImage(payload.id);
   }
 
+  @Delete('me')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete current user account' })
+  @ApiResponse({
+    status: 200,
+    description: 'User account deleted successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Your account has been deleted successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    schema: {
+      example: {
+        success: false,
+        message: 'Unauthorized',
+      },
+    },
+  })
+  public deleteAccount(@CurrentUser() payload: JWTPayloadType) {
+    return this.usersService.deleteAccount(payload.id);
+  }
+
+
   @Get("profile-images/:filename")
   @UseGuards(AuthGuard)
   @ApiSecurity('bearer')
