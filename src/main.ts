@@ -22,7 +22,7 @@ async function bootstrap() {
   const swagger = new DocumentBuilder()
     .setTitle("Real time chat app")
     .setDescription("A real time chat app with NestJS and TypeORM")
-    .addServer(process.env.DOMAIN || "http://localhost:4000")
+    .addServer(process.env.RAILWAY_STATIC_URL || "http://localhost:4000")
     .setVersion("1.0")
     .addSecurity('bearer', { type: 'http', scheme: 'bearer' })
     .addBearerAuth()
