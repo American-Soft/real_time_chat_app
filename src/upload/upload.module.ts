@@ -2,14 +2,37 @@ import { BadRequestException, Global, Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { existsSync, mkdirSync } from 'fs';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { FileUploadService } from './file-upload.service';
 
+const UPLOAD_PATHS = {
+  PROFILE: './uploads/profiles',
+  GROUP: './uploads/groups',
+  CHAT: './uploads/chat',
+};
+
+const DANGEROUS_EXTENSIONS = [
+  '.exe', '.bat', '.cmd', '.sh', '.js', '.php', '.jsp', '.asp',
+  '.aspx', '.html', '.htm', '.py', '.rb', '.dll',
+];
+
 function ensureDirectory(path: string) {
-  if (!existsSync(path)) {
-    mkdirSync(path, { recursive: true });
+  if (!existsSync(path)) mkdirSync(path, { recursive: true });
+}
+
+function getUploadPath(fieldname: string): string {
+  switch (fieldname) {
+    case 'profile-image': return UPLOAD_PATHS.PROFILE;
+    case 'group-image': return UPLOAD_PATHS.GROUP;
+    default: return UPLOAD_PATHS.CHAT;
   }
+}
+
+function generateFilename(file: Express.Multer.File): string {
+  const prefix = `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+  const safeName = file.originalname.replace(/\s+/g, '_');
+  return `${prefix}-${safeName}`;
 }
 
 @Global()
@@ -18,58 +41,39 @@ function ensureDirectory(path: string) {
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const isProfile = file.fieldname === 'profile-image';
-          const isGroupImage = file.fieldname === 'group-image';
-          let destinationPath = './uploads/chat';
-
-          if (isProfile) {
-            destinationPath = './profile-images';
-          } else if (isGroupImage) {
-            destinationPath = './uploads/groups';
-          }
-
+          const destinationPath = getUploadPath(file.fieldname);
           ensureDirectory(destinationPath);
           cb(null, destinationPath);
         },
         filename: (req, file, cb) => {
-          const isProfile = file.fieldname === 'profile-image';
-          const isGroupImage = file.fieldname === 'group-image';
-
-          if (isProfile) {
-            const prefix = `${Date.now()}-${Math.round(Math.random() * 1000000)}`;
-            const filename = `${prefix}-${file.originalname}`;
-            cb(null, filename);
-          } else if (isGroupImage) {
-            const prefix = `${Date.now()}-${Math.round(Math.random() * 1000000)}`;
-            const filename = `${prefix}-${file.originalname}`;
-            cb(null, filename);
-          } else {
-            const uniqueName = uuidv4();
-            const extension = extname(file.originalname);
-            cb(null, `${uniqueName}${extension}`);
-          }
+          const extension = extname(file.originalname);
+          const isProfileOrGroup = ['profile-image', 'group-image'].includes(file.fieldname);
+          const filename = isProfileOrGroup
+            ? generateFilename(file)
+            : `${uuidv4()}${extension}`;
+          cb(null, filename);
         },
       }),
       fileFilter: (req, file, cb) => {
-        const isProfile = file.fieldname === 'profile-image';
-        const isGroupImage = file.fieldname === 'group-image';
+        const ext = extname(file.originalname).toLowerCase();
 
-        if (isProfile || isGroupImage) {
-          if (file.mimetype.startsWith('image')) {
-            cb(null, true);
-          } else {
-            cb(new BadRequestException('Unsupported file format'), false);
-          }
-        } else {
-          cb(null, true);
+        if (DANGEROUS_EXTENSIONS.includes(ext)) {
+          return cb(new BadRequestException(`File type not allowed: ${ext}`), false);
         }
+
+        const isImageField = ['profile-image', 'group-image'].includes(file.fieldname);
+        if (isImageField && !file.mimetype.startsWith('image/')) {
+          return cb(new BadRequestException('Only image files are allowed'), false);
+        }
+
+        cb(null, true);
       },
-      limits: { fileSize: 1024 * 1024 },
+      limits: {
+        fileSize: 1 * 1024 * 1024,
+      },
     }),
   ],
   providers: [FileUploadService],
   exports: [MulterModule, FileUploadService],
 })
 export class UploadModule { }
-
-
