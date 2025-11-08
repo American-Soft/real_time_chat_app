@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { RegisterDto } from "./dtos/register.dto";
 import * as bcrypt from 'bcryptjs';
@@ -11,6 +11,8 @@ import { ConfigService } from "@nestjs/config";
 import { randomBytes } from "node:crypto";
 import { MailService } from "src/mail/mail.service";
 import { ResetPasswordDto } from "./dtos/reset-password.dto";
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 
 @Injectable()
 export class AuthProvider {
@@ -20,6 +22,8 @@ export class AuthProvider {
         private readonly jwtService: JwtService,
         private readonly config: ConfigService,
         private readonly mailService: MailService,
+        private eventEmitter: EventEmitter2,
+        private readonly dataSource: DataSource,
     ) { }
 
 
@@ -30,8 +34,11 @@ export class AuthProvider {
     */
 
     public async register(registerDto: RegisterDto) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         try {
-            const { email, password, username,firstName,lastName } = registerDto;
+            const { email, password, username, firstName, lastName } = registerDto;
             const existingUser = await this.userRepository.findOne({ where: { email } });
             if (existingUser) {
                 throw new BadRequestException('User with this email already exists');
@@ -41,14 +48,17 @@ export class AuthProvider {
                 email,
                 password: hashedPassword,
                 username: username,
-                firstName:firstName,
-                lastName:lastName,
+                firstName: firstName,
+                lastName: lastName,
                 verificationToken: randomBytes(32).toString('hex'),
             });
             user = await this.userRepository.save(user);
-            const verifyLink = this.generateLink(user.id, user.verificationToken);
-            await this.mailService.sendVerifyEmailTemplate(email, verifyLink);
+
+            this.eventEmitter.emit('user.registered', { user });
+
             const token = await this.generateJWTToken({ id: user.id, email: user.email });
+            await queryRunner.commitTransaction();
+
             return {
                 success: true,
                 message: 'Verification token has been sent to your email, please verify your email address',
@@ -59,7 +69,11 @@ export class AuthProvider {
 
             };
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             throw new BadRequestException(error.message || 'Registration failed');
+        }
+        finally {
+            await queryRunner.release();
         }
     }
 
@@ -160,7 +174,4 @@ export class AuthProvider {
         return this.jwtService.signAsync(payload);
     }
 
-    private generateLink(userId: number, verificationToken: string) {
-        return `${this.config.get<string>("DOMAIN")}/user/verify-email/${userId}/${verificationToken}`;
-    }
 }

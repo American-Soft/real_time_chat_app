@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import { Friendship } from './friendship.entity';
 import { FriendshipStatus } from '../enums/friendship-status.enum';
 import { User } from '../user/user.entity';
@@ -96,21 +96,17 @@ export class FriendshipService {
   async searchUsers(userId: number, dto: SearchUsersDto) {
     const { query, page = 1, limit = 10 } = dto;
 
-    const qb = this.userRepository.createQueryBuilder('user');
+    const where: any = [
+      { username: ILike(`%${query ?? ''}%`), id: Not(userId) },
+      { email: ILike(`%${query ?? ''}%`), id: Not(userId) },
+    ];
 
-    qb.where('user.id != :userId', { userId });
-
-    if (query) {
-      qb.andWhere('(user.username LIKE :query OR user.email LIKE :query)', {
-        query: `%${query}%`,
-      });
-    }
-
-    // Pagination
-    qb.skip((page - 1) * limit); // OFFSET
-    qb.take(limit);              // LIMIT
-
-    const [data, total] = await qb.getManyAndCount();
+    const [data, total] = await this.userRepository.findAndCount({
+      where: query ? where : { id: Not(userId) },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { username: 'ASC' },
+    });
 
     return {
       data,
@@ -120,6 +116,7 @@ export class FriendshipService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
 
 
   async listFriends(userId: number) {
@@ -266,39 +263,53 @@ export class FriendshipService {
     });
     return !!(friendship && (friendship as any).isBlocked);
   }
-async getMutualFriends(userId: number, otherUserIds: number[]) {
-  if (!otherUserIds || otherUserIds.length === 0) {
-    return [];
+  async getMutualFriends(userId: number, otherUserIds: number[]) {
+    if (!otherUserIds || otherUserIds.length === 0) {
+      return [];
+    }
+
+    const results = [];
+
+    for (const otherUserId of otherUserIds) {
+      const qb = this.userRepository
+        .createQueryBuilder('user')
+        .innerJoin(
+          Friendship,
+          'f1',
+          `(
+          (f1.requesterId = user.id AND f1.receiverId = :userId)
+          OR (f1.receiverId = user.id AND f1.requesterId = :userId)
+        )
+        AND f1.status = :status`,
+          { userId, status: FriendshipStatus.ACCEPTED },
+        )
+        .innerJoin(
+          Friendship,
+          'f2',
+          `(
+          (f2.requesterId = user.id AND f2.receiverId = :otherUserId)
+          OR (f2.receiverId = user.id AND f2.requesterId = :otherUserId)
+        )
+        AND f2.status = :status`,
+          { otherUserId, status: FriendshipStatus.ACCEPTED },
+        )
+        // Exclude the two main users
+        .where('user.id NOT IN (:...excluded)', {
+          excluded: [userId, otherUserId],
+        });
+
+      const mutualFriends = await qb.getMany();
+
+      results.push({
+        otherUserId,
+        mutualFriends,
+      });
+    }
+
+    return results;
   }
 
-  const results = [];
 
-  for (const otherUserId of otherUserIds) {
-    const qb = this.userRepository.createQueryBuilder('user')
-      .innerJoin(
-        'user.sentRequests',
-        'f1',
-        '(f1.receiver = :userId OR f1.requester = :userId) AND f1.status = :status',
-        { userId, status: FriendshipStatus.ACCEPTED },
-      )
-      .innerJoin(
-        'user.sentRequests',
-        'f2',
-        '(f2.receiver = :otherUserId OR f2.requester = :otherUserId) AND f2.status = :status',
-        { otherUserId, status: FriendshipStatus.ACCEPTED },
-      )
-      .where('user.id NOT IN (:...excluded)', { excluded: [userId, otherUserId] });
-
-    const mutualFriends = await qb.getMany();
-
-    results.push({
-      otherUserId,
-      mutualFriends,
-    });
-  }
-
-  return results;
-}
 
 
 } 

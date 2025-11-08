@@ -3,22 +3,19 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RegisterDto } from './dtos/register.dto';
-import * as bcrypt from 'bcryptjs';
 import { LoginDto } from './dtos/login.dto';
-import { JwtService } from '@nestjs/jwt';
-import { JWTPayloadType } from 'src/utils/types';
 import { AuthProvider } from './auth.provider';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { ResetPasswordDto } from './dtos/reset-password.dto';
 import { join } from 'node:path';
 import { unlinkSync } from 'node:fs';
-
+import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class UserService {
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
-    private readonly authProvider: AuthProvider
+    private readonly authProvider: AuthProvider,
+    private readonly eventEmitter: EventEmitter2
   ) {
-    // Constructor logic can be added here if needed
   }
 
 
@@ -50,16 +47,22 @@ export class UserService {
  * @returns updated user from the database
  */
   public async update(id: number, updateUserDto: UpdateUserDto) {
-    const { password, username, firstName, lastName } = updateUserDto;
     const user = await this.userRepository.findOne({ where: { id } });
-
-    user.username = username ?? user.username;
-    if (password) {
-      user.password = await this.authProvider.hashPassword(password);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return this.userRepository.save(user);
+    if (updateUserDto.password) {
+      updateUserDto.password = await this.authProvider.hashPassword(updateUserDto.password);
+    } else {
+      delete updateUserDto.password;
+    }
+
+    const updatedUser = this.userRepository.merge(user, updateUserDto);
+
+    return this.userRepository.save(updatedUser);
   }
+
 
   /**
  * Get current user (logged in user)
@@ -153,8 +156,8 @@ export class UserService {
     if (user.profileImage === null)
       throw new BadRequestException("there is no profile image");
 
-    const imagePath = join
-      (process.cwd(), `profile-images/${user.profileImage}`);
+    const imagePath = join(process.cwd(), 'uploads', 'profiles', user.profileImage);
+
     unlinkSync(imagePath);
 
     user.profileImage = null;
@@ -170,16 +173,10 @@ export class UserService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    if (user.profileImage) {
-      try {
-        const imagePath = join(process.cwd(), `profile-images/${user.profileImage}`);
-        unlinkSync(imagePath);
-      } catch (err) {
-        console.warn(`Failed to delete profile image: ${err.message}`);
-      }
-    }
 
     await this.userRepository.remove(user);
+
+    this.eventEmitter.emit('user.deleted', { user });
 
     return {
       success: true,

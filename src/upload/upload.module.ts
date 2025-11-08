@@ -5,12 +5,8 @@ import { existsSync, mkdirSync } from 'fs';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { FileUploadService } from './file-upload.service';
+import { UploadPaths } from './enums/upload-paths';
 
-const UPLOAD_PATHS = {
-  PROFILE: './uploads/profiles',
-  GROUP: './uploads/groups',
-  CHAT: './uploads/chat',
-};
 
 const DANGEROUS_EXTENSIONS = [
   '.exe', '.bat', '.cmd', '.sh', '.js', '.php', '.jsp', '.asp',
@@ -23,9 +19,9 @@ function ensureDirectory(path: string) {
 
 function getUploadPath(fieldname: string): string {
   switch (fieldname) {
-    case 'profile-image': return UPLOAD_PATHS.PROFILE;
-    case 'group-image': return UPLOAD_PATHS.GROUP;
-    default: return UPLOAD_PATHS.CHAT;
+    case 'profile-image': return UploadPaths.PROFILE;
+    case 'group-image': return UploadPaths.GROUP;
+    default: return UploadPaths.CHAT;
   }
 }
 

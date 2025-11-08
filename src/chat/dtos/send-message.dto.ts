@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, IsDate } from 'class-validator';
 import { MessageType } from '../../enums/message-type.enum';
 import { Type } from 'class-transformer';
 
@@ -66,4 +66,13 @@ export class SendMessageDto {
   @IsString()
   @IsOptional()
   mimeType?: string;
+
+  @ApiPropertyOptional({
+    example: '2025-11-08T14:25:00Z',
+    description: 'Optional custom message creation date',
+  })
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  createdAt?: Date;
 }

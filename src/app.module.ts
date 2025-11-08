@@ -13,6 +13,7 @@ import { CallModule } from './call/call.module';
 import { AuthModule } from './auth/auth.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 @Module({
   imports: [UserModule,
     MailModule,
@@ -26,7 +27,7 @@ import { APP_GUARD } from '@nestjs/core';
       throttlers: [
         {
           ttl: 60000,
-          limit: 3,
+          limit: 100,
         },
       ],
     }),
@@ -48,6 +49,7 @@ import { APP_GUARD } from '@nestjs/core';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    EventEmitterModule.forRoot()
   ],
   controllers: [AppController],
   providers: [AppService, {

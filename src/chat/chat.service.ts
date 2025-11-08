@@ -18,6 +18,8 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from 'src/notification/enums/notification-type';
 import { GroupService } from '../group/group.service';
 import { FriendshipService } from '../friendship/friendship.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 
 @Injectable()
 export class ChatService {
@@ -32,6 +34,7 @@ export class ChatService {
     private notificationService: NotificationService,
     private groupService: GroupService,
     private friendshipService: FriendshipService,
+    private eventEmitter: EventEmitter2
   ) { }
 
 
@@ -155,6 +158,7 @@ export class ChatService {
       fileName,
       fileSize,
       mimeType,
+      createdAt,
     } = sendMessageDto;
 
     let chatRoom: ChatRoom;
@@ -183,6 +187,7 @@ export class ChatService {
       fileName,
       fileSize,
       mimeType,
+      ...(createdAt ? { createdAt } : {}),
     });
 
     const savedMessage = await this.messageRepository.save(message);
@@ -191,11 +196,8 @@ export class ChatService {
       relations: ['sender', 'chatRoom', 'chatRoom.group'],
     });
 
-    await this.notificationService.sendMessageNotification(
-      fullMessage,
-      chatRoom,
-      fullMessage.sender,
-    );
+    this.eventEmitter.emit('message.sent', { message: fullMessage, chatRoom });
+
 
     return fullMessage;
   }
@@ -284,9 +286,9 @@ export class ChatService {
       .andWhere("senderId = :senderId", { senderId: senderIdOrGroupId })
       .execute();
 
-    await this.notificationService.markAllNotificationsAsRead(userId, {
+    this.eventEmitter.emit('messages.read', {
+      userId,
       chatRoomId: chatRoom.id,
-      type: NotificationType.MESSAGE,
     });
 
   }

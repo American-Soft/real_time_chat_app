@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RtcRole, RtcTokenBuilder } from 'agora-token';
 
@@ -20,36 +20,39 @@ export class AgoraService {
     uid: string | number,
     role: number = RtcRole.PUBLISHER,
     expireSeconds = 3600,
-  ): { token: string; expireAt: number } {
+  ) {
+    if (!channelName) throw new BadRequestException('Channel name is required.');
+    if (!uid && uid !== 0) throw new BadRequestException('User ID or account is required.');
+    if (expireSeconds < 60) throw new BadRequestException('Expiration must be at least 60 seconds.');
 
-    const currentTs = Math.floor(Date.now() / 1000);
-    const expireAt = currentTs + expireSeconds;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const expirationTimestamp = currentTimestamp + expireSeconds;
 
-     let token: string;
+    const buildArgs = [
+      this.appId,
+      this.appCertificate,
+      channelName,
+      uid,
+      role,
+      expirationTimestamp,
+      expirationTimestamp,
+    ] as const;
 
-    if (typeof uid === 'number') {
-      token = RtcTokenBuilder.buildTokenWithUid(
-        this.appId,
-        this.appCertificate,
-        channelName,
-        uid,
-        role,
-        expireAt,
-        expireAt,
-      );
-    } else {
-      token = RtcTokenBuilder.buildTokenWithUserAccount(
-        this.appId,
-        this.appCertificate,
-        channelName,
-        uid,
-        role,
-        expireAt,
-        expireAt,
-      );
-    }
+    const token =
+      typeof uid === 'number'
+        ? RtcTokenBuilder.buildTokenWithUid(...buildArgs)
+        : RtcTokenBuilder.buildTokenWithUserAccount(...buildArgs);
 
-    return { token, expireAt };
+
+
+    return {
+      token,
+      channelName,
+      uid,
+      role,
+      expiresIn: expireSeconds,
+      expireAt: expirationTimestamp,
+    };
   }
 }
 
