@@ -23,6 +23,6 @@ import { FriendshipModule } from '../friendship/friendship.module';
   ],
   controllers: [ChatController],
   providers: [ChatService, FileUploadService, ChatGateway],
-  exports: [ChatService],
+  exports: [ChatService, ChatGateway],
 })
 export class ChatModule { } 

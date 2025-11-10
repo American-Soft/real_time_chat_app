@@ -17,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JWTPayloadType } from '../utils/types';
 import { AgoraService } from 'src/call/agora.service';
+import { forwardRef, Inject } from '@nestjs/common';
 
 interface AuthenticatedSocket extends Socket {
   user?: User;
@@ -35,6 +36,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private connectedUsers = new Map<number, Set<string>>(); // userId -> Set<socketId>
 
   constructor(
+    @Inject(forwardRef(() => ChatService))
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
     @InjectRepository(User)
