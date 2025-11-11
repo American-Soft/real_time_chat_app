@@ -155,6 +155,7 @@ export class ChatService {
       fileName,
       fileSize,
       mimeType,
+      createdAt
     } = sendMessageDto;
 
     let chatRoom: ChatRoom;
@@ -185,6 +186,9 @@ export class ChatService {
       mimeType,
     });
 
+    if (createdAt) {
+      message.createdAt = createdAt;
+    }
     const savedMessage = await this.messageRepository.save(message);
     const fullMessage = await this.messageRepository.findOne({
       where: { id: savedMessage.id },
